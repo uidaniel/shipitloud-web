@@ -16,7 +16,10 @@ export async function proxy(request: NextRequest) {
     },
   });
   const { data } = await sb.auth.getUser();
-  if (!data.user && request.nextUrl.pathname.startsWith('/app')) {
+  const path = request.nextUrl.pathname;
+  // Signed-in people don't need the login or sign-up pages.
+  if (data.user && (path === '/login' || path === '/signup')) return NextResponse.redirect(new URL('/app', request.url));
+  if (!data.user && path.startsWith('/app')) {
     const login = new URL('/login', request.url);
     login.searchParams.set('next', request.nextUrl.pathname);
     return NextResponse.redirect(login);
@@ -25,5 +28,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/app/:path*', '/login', '/auth/:path*'],
+  matcher: ['/app/:path*', '/login', '/signup', '/forgot', '/reset-password', '/auth/:path*'],
 };

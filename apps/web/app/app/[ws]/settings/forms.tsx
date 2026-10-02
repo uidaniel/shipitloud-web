@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { Submit } from '@/components/app/ui';
-import { saveAutomation, saveNotifications, saveProduct, setKillSwitch } from '../../actions';
+import { changePassword, saveAutomation, saveNotifications, saveProduct, setKillSwitch, signOutEverywhere } from '../../actions';
+import { PasswordInput } from '@/components/app/auth';
 
 function Saved({ state }: { state: { ok?: boolean; error?: string } }) {
   const [show, setShow] = useState(false);
@@ -128,5 +129,41 @@ export function NotificationsForm({ email, slack, webhook, address }: { email: b
       </div>
       <div className="pr-section-f"><Saved state={state} /><Submit pending="Saving…">Save</Submit></div>
     </form>
+  );
+}
+
+export function AccountForm({ email, hasPassword }: { email: string; hasPassword: boolean }) {
+  const [state, action] = useActionState(changePassword, {});
+  const [current, setCurrent] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  useEffect(() => { if (state.ok) { setCurrent(''); setPassword(''); setConfirm(''); } }, [state]);
+  return (
+    <div className="pr-section">
+      <div className="pr-section-h">
+        <h2>Account</h2>
+        <p>Signed in as {email}.</p>
+      </div>
+      <form action={action}>
+        <div className="pr-section-b" style={{ display: 'grid', gap: 14 }}>
+          <b style={{ fontSize: 14, fontWeight: 600 }}>{hasPassword ? 'Change password' : 'Set a password'}</b>
+          {!hasPassword && <p className="pr-hint" style={{ margin: '-8px 0 0' }}>You log in with email links today. Add a password to log in without waiting for an email.</p>}
+          {hasPassword && (
+            <div><label className="pr-label" htmlFor="cur">Current password</label><PasswordInput id="cur" name="current" autoComplete="current-password" value={current} onChange={setCurrent} /></div>
+          )}
+          <div className="pr-grid-2">
+            <div><label className="pr-label" htmlFor="np">New password</label><PasswordInput id="np" name="password" autoComplete="new-password" placeholder="At least 8 characters" value={password} onChange={setPassword} /></div>
+            <div><label className="pr-label" htmlFor="cp2">Type it again</label><PasswordInput id="cp2" name="confirm" autoComplete="new-password" value={confirm} onChange={setConfirm} /></div>
+          </div>
+        </div>
+        <div className="pr-section-f"><Saved state={state} /><Submit pending="Saving…">{hasPassword ? 'Change password' : 'Set password'}</Submit></div>
+      </form>
+      <form action={signOutEverywhere} className="pr-section-b" style={{ borderTop: '1px solid var(--line)' }}>
+        <div className="pr-row">
+          <div className="pr-row-t"><b>Sign out everywhere</b><span>Ends your session on every device, including this one.</span></div>
+          <Submit className="pr-btn" pending="Signing out…">Sign out everywhere</Submit>
+        </div>
+      </form>
+    </div>
   );
 }

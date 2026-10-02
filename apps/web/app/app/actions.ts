@@ -166,6 +166,38 @@ export async function signOut() {
   redirect('/login');
 }
 
+/** Ends every session on every device, including this one. */
+export async function signOutEverywhere() {
+  const { sb } = await requireUser();
+  await sb.auth.signOut({ scope: 'global' });
+  redirect('/login');
+}
+
+/** Change (or, for magic-link accounts, set) the password. The current one is checked first when there is one. */
+export async function changePassword(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+  const { sb, user } = await requireUser();
+  const current = typeof form.get('current') === 'string' ? String(form.get('current')) : '';
+  const next = typeof form.get('password') === 'string' ? String(form.get('password')) : '';
+  const confirm = typeof form.get('confirm') === 'string' ? String(form.get('confirm')) : '';
+  if (next.length < 8) return { error: 'Use at least 8 characters.' };
+  if (next !== confirm) return { error: 'The two new passwords don’t match.' };
+  if (user.user_metadata?.has_password) {
+    if (!current) return { error: 'Enter your current password.' };
+    // Check it on a throwaway client so this session isn't touched.
+    const { createClient } = await import('@supabase/supabase-js');
+    const probe = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { error } = await probe.auth.signInWithPassword({ email: user.email!, password: current });
+    if (error) return { error: 'Your current password isn’t right.' };
+    await probe.auth.signOut({ scope: 'local' });
+  }
+  const { error } = await sb.auth.updateUser({ password: next, data: { has_password: true } });
+  if (error) {
+    const m = error.message.toLowerCase();
+    return { error: m.includes('same') ? 'That’s your current password. Pick a new one.' : m.includes('pwned') || m.includes('weak') ? 'That password has shown up in a data breach. Pick another one.' : 'Couldn’t change it. Try again.' };
+  }
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------- dev helper
 /** Creates a few example drafts so the inbox can be tried before generators exist. Never in production. */
 export async function addExampleDrafts(form: FormData) {

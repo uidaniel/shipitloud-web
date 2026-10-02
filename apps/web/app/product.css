@@ -340,3 +340,28 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 .pr-linkrow small { font-size: 12px; color: var(--faint); }
 .pr-linkrow svg:last-child { color: var(--faint); }
 .pr-quote { margin: 10px 0 0; padding: 8px 12px; border-left: 2px solid var(--line-2); color: var(--faint); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+
+/* Auth */
+.pr-auth .pr-label { margin: 4px 0 -4px; }
+.pr-label-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
+.pr-label-row .pr-label { margin: 0; }
+.pr-auth-link { font-size: 13px; color: var(--muted); text-decoration: none; }
+.pr-auth-link:hover { color: var(--text); }
+.pr-pass { position: relative; }
+.pr-pass .pr-input { padding-right: 64px; }
+.pr-pass-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
+.pr-pass-toggle:hover { color: var(--text); background: var(--hover); }
+.pr-auth-switch { margin-top: 14px; padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
+.pr-auth-switch:hover { color: var(--text); }
+.pr-auth-foot { margin: 22px 0 0; font-size: 14px; color: var(--muted); }
+.pr-auth-foot a { color: var(--text); font-weight: 500; }
+.pr-btn-google { width: 100%; justify-content: center; gap: 10px; background: var(--panel); }
+.pr-or { display: flex; align-items: center; gap: 12px; margin: 18px 0; color: var(--faint); font-size: 12px; }
+.pr-or::before, .pr-or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.pr-ok { color: var(--ok); font-size: 14px; margin: 10px 0 0; }
+.pr-strength { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); margin-top: -2px; }
+.pr-strength i { flex: 0 0 80px; height: 4px; border-radius: 4px; background: var(--line-2); position: relative; overflow: hidden; }
+.pr-strength i::after { content: ''; position: absolute; inset: 0; transform-origin: left; transition: transform .2s, background-color .2s; }
+.pr-strength-short i::after { transform: scaleX(.33); background: var(--err); }
+.pr-strength-ok i::after { transform: scaleX(.66); background: var(--warn); }
+.pr-strength-strong i::after { transform: scaleX(1); background: var(--ok); }

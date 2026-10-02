@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { requireWorkspace } from '@/lib/supabase/server';
-import { AutomationForm, KillSwitch, NotificationsForm, ProductForm } from './forms';
+import { AccountForm, AutomationForm, KillSwitch, NotificationsForm, ProductForm } from './forms';
 
 export const metadata: Metadata = { title: 'Settings' };
 
@@ -16,6 +16,7 @@ export default async function Settings({ params }: { params: Promise<{ ws: strin
       <KillSwitch ws={id} on={ws.kill_switch} />
       <ProductForm ws={id} name={ws.product_name} url={ws.url ?? ''} launchDate={ws.launch_date ?? ''} />
       <NotificationsForm email={prefs.email !== false} slack={!!prefs.slack} webhook={prefs.slack_webhook ?? ''} address={user.email ?? ''} />
+      <AccountForm email={user.email ?? ''} hasPassword={!!user.user_metadata?.has_password} />
     </div>
   );
 }
