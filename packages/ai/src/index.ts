@@ -6,3 +6,4 @@ export * from './claims.ts';
 export * from './prompts/video.ts';
 export * from './prompts/listening.ts';
 export * from './prompts/content.ts';
+export * from './prompts/blog.ts';

@@ -17,6 +17,8 @@ export interface Provider {
   id: string;
   /** True when this provider can act automatically (API approved + implemented). */
   automatic: boolean;
+  /** Publishes inside ShipItLoud (e.g. the hosted blog): no token needed, and test mode doesn't apply. */
+  internal?: boolean;
   execute(payload: Record<string, unknown>, ctx: ProviderContext): Promise<ProviderResult>;
 }
 

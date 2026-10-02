@@ -8,6 +8,7 @@ import { runReadiness } from './readiness.ts';
 import { makeDemoVideo } from './video.ts';
 import { draftReply } from '@shipitloud/engine';
 import { pollWorkspace } from './listen.ts';
+import { findKeywords, writeArticle } from './blog.ts';
 import { checkUpdates, learnVoice, makeContentWeek, postFromFormat, postsForUpdate, repurpose } from './content.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
@@ -139,6 +140,18 @@ export const handlers: Record<string, Handler> = {
     await planLimitNotice(ws, async () => {
       const n = await postsForUpdate(ws, String(p.update_id));
       if (n) await notifyOwner(ws, 'content_ready', 'You shipped something: posts are ready', 'We drafted an X post and a LinkedIn post about it.', `${appUrl()}/app/${ws}/inbox`);
+    });
+  },
+
+  /** SEO blog: keyword ideas, then articles into the inbox. */
+  async 'blog.keywords'(_p, job) {
+    await planLimitNotice(job.workspace_id!, () => findKeywords(job.workspace_id!));
+  },
+  async 'blog.write'(p, job) {
+    const ws = job.workspace_id!;
+    await planLimitNotice(ws, async () => {
+      const id = await writeArticle(ws, String(p.keyword_id));
+      if (id) await notifyOwner(ws, 'content_ready', 'Your article is ready to read', 'Check it, fix anything marked [verify], then approve to publish.', `${appUrl()}/app/${ws}/blog/${id}`);
     });
   },
 

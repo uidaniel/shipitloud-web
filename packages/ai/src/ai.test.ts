@@ -82,3 +82,11 @@ test('claim checker flags invented results and roadmap promises', () => {
   assert.ok(flags.some((f) => f.includes('future plan')));
   assert.deepEqual(findUnsupportedClaims('Send one message on day 3, then move on to the next client.', 'x'), []);
 });
+
+test('claim checker flags security promises, retention outcomes and pricing it was not given', () => {
+  const flags = findUnsupportedClaims('Your invoice links are encrypted. Most freelancers in Nigeria who try it stay. Balans is free to try.', 'Invoice from WhatsApp');
+  assert.ok(flags.some((f) => f.startsWith('Security claim')), flags.join('|'));
+  assert.ok(flags.some((f) => f.startsWith('Unverified outcome')));
+  assert.ok(flags.some((f) => f.startsWith('Pricing claim')));
+  assert.deepEqual(findUnsupportedClaims('Balans is free to try.', 'Balans is free to try for 14 days'), []);
+});

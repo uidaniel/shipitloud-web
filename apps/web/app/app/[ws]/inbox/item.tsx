@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { PlatformIcon, type Platform } from '@/components/space/platform-icons';
 import { Icon } from '@/components/app/icons';
@@ -11,7 +12,7 @@ export interface InboxAsset {
   type: string;
   platform: string | null;
   title: string;
-  content: { text?: string; thread_url?: string; quote?: string; slots?: Record<string, string>; score_tips?: string[] };
+  content: { text?: string; thread_url?: string; quote?: string; slots?: Record<string, string>; score_tips?: string[]; post_id?: string };
   file_url?: string | null;
   qa_score?: number | null;
   confidence: number | null;
@@ -25,7 +26,7 @@ const PLATFORM: Record<string, { icon: Platform; name: string }> = {
   x: { icon: 'x', name: 'X' }, linkedin: { icon: 'linkedin', name: 'LinkedIn' }, reddit: { icon: 'reddit', name: 'Reddit' },
   hn: { icon: 'hn', name: 'Hacker News' }, instagram: { icon: 'instagram', name: 'Instagram' }, tiktok: { icon: 'tiktok', name: 'TikTok' },
   email: { icon: 'email', name: 'Email' }, bluesky: { icon: 'bluesky', name: 'Bluesky' }, github: { icon: 'github', name: 'GitHub' },
-  rss: { icon: 'rss', name: 'RSS' }, producthunt: { icon: 'producthunt', name: 'Product Hunt' }, indiehackers: { icon: 'indiehackers', name: 'Indie Hackers' },
+  rss: { icon: 'rss', name: 'RSS' }, blog: { icon: 'rss', name: 'Blog' }, producthunt: { icon: 'producthunt', name: 'Product Hunt' }, indiehackers: { icon: 'indiehackers', name: 'Indie Hackers' },
 };
 const TYPE: Record<string, string> = { reply: 'Reply', post: 'Post', poster: 'Poster', video: 'Video', email: 'Email', article: 'Article', ad_creative: 'Ad' };
 
@@ -111,7 +112,9 @@ export function InboxItem({ ws, asset, threshold }: { ws: string; asset: InboxAs
       {!editing && (
         <div className="pr-item-act">
           <form action={decide}>{hidden('reject')}<Submit className="pr-btn pr-btn-ghost pr-btn-sm" title="Reject">{Icon.x}<span className="sr-only">Reject</span></Submit></form>
-          <button className="pr-btn pr-btn-sm" onClick={() => setEditing(true)}>{Icon.edit} Edit</button>
+          {asset.type === 'article' && asset.content.post_id
+            ? <Link className="pr-btn pr-btn-sm" href={`/app/${ws}/blog/${asset.content.post_id}`}>{Icon.edit} Read article</Link>
+            : <button className="pr-btn pr-btn-sm" onClick={() => setEditing(true)}>{Icon.edit} Edit</button>}
           <form action={decide}>{hidden('approve')}<Submit className="pr-btn pr-btn-primary pr-btn-sm" pending="Approving">{Icon.check} Approve</Submit></form>
         </div>
       )}

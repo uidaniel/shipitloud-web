@@ -26,6 +26,11 @@ Everything below is already built in code. Each item is a dashboard setting, acc
 - [ ] `PRODUCTHUNT_TOKEN` (Product Hunt developer token). It switches on the Product Hunt source.
 - [ ] `X_BEARER_TOKEN`. It switches on X for Scale workspaces, metered by `x_reads`.
 
+## Blog
+- [ ] Google Search Console: verify the domain and submit `/sitemap.xml`. Each blog also has `/blog/<slug>/sitemap.xml`.
+- [ ] Ranking data: connect the Search Console API to fill `blog_posts.rank` (planned with the analytics work).
+- [ ] Custom domains (blog.yourproduct.com): add the domain on Netlify and point a CNAME at it; `blogs.custom_domain` maps it to the right blog.
+
 ## Chrome extension
 - [ ] Build it: `npm run build -w @shipitloud/extension`, which writes `apps/extension/dist`. For local testing against `localhost:3001`, use `build:dev`, then chrome://extensions → Developer mode → Load unpacked.
 - [ ] If the app's production URL changes, update `DEFAULT_API` / `host_permissions` in `apps/extension/build.mjs`.

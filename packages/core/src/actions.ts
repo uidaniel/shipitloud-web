@@ -95,7 +95,8 @@ export async function execute(repo: ActionsRepo, req: ActionRequest, opts: Actio
   }
 
   const provider = getProvider(req.provider);
-  if (simulate && provider.automatic) {
+  // Internal providers (our own hosted blog) touch no outside platform, so test mode doesn't apply.
+  if (simulate && provider.automatic && !provider.internal) {
     const row = await record('simulated', 'Test mode: nothing was sent', { simulated: true });
     if (req.assetId) await repo.setAssetStatus(req.assetId, 'published');
     return row;
@@ -103,8 +104,8 @@ export async function execute(repo: ActionsRepo, req: ActionRequest, opts: Actio
 
   let result: ProviderResult;
   try {
-    const token = provider.automatic ? await repo.getToken(req.workspaceId, req.provider) : undefined;
-    if (provider.automatic && !token) {
+    const token = provider.automatic && !provider.internal ? await repo.getToken(req.workspaceId, req.provider) : undefined;
+    if (provider.automatic && !provider.internal && !token) {
       // API exists but this workspace hasn't connected it: fall back to copy and post.
       result = await copyAndPost(req.provider).execute(req.payload, { simulate });
     } else {

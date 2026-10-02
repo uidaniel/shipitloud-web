@@ -549,3 +549,103 @@ export async function saveVoiceSamples(_: unknown, form: FormData): Promise<{ ok
   revalidatePath(`/app/${wsId}/content`);
   return { ok: true };
 }
+
+// ---------------------------------------------------------------- SEO blog
+const BLOG_SLUG = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
+
+export async function saveBlog(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const slug = str(form.get('slug'), 40).toLowerCase();
+  const title = str(form.get('title'), 80);
+  if (!BLOG_SLUG.test(slug)) return { error: 'Use 3 to 40 lowercase letters, numbers or dashes.' };
+  if (!title) return { error: 'Give the blog a title.' };
+  const { data: taken } = await supabaseAdmin().from('blogs').select('workspace_id').eq('slug', slug).maybeSingle();
+  if (taken && taken.workspace_id !== wsId) return { error: 'That address is taken. Try another.' };
+  const { error } = await sb.from('blogs').upsert({ workspace_id: wsId, slug, title, description: str(form.get('description'), 200) || null, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
+  if (error) return { error: 'Couldn’t save. Try again.' };
+  revalidatePath(`/app/${wsId}/blog`);
+  return { ok: true };
+}
+
+export async function findKeywordIdeas(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'blog.keywords', {}, `kw:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/blog`);
+}
+
+export async function addKeyword(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const keyword = str(form.get('keyword'), 120).toLowerCase().replace(/\s+/g, ' ');
+  if (keyword.split(' ').length < 2) return { error: 'Use the words people would type into Google, like "invoice app for freelancers".' };
+  const kind = /^best\b/.test(keyword) ? 'best' : /\balternatives?\b/.test(keyword) ? 'alternative' : /\bvs\.?\b|\bversus\b/.test(keyword) ? 'versus' : /^how\b/.test(keyword) ? 'howto' : /\?$|^(what|why|when|which|can|is|does)\b/.test(keyword) ? 'question' : 'usecase';
+  const { error } = await sb.from('seo_keywords').insert({ workspace_id: wsId, keyword, kind, source: 'manual', priority: 70 });
+  if (error) return { error: error.code === '23505' ? 'You already have that one.' : 'Couldn’t save. Try again.' };
+  revalidatePath(`/app/${wsId}/blog`);
+  return { ok: true };
+}
+
+export async function writeArticleFor(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const id = str(form.get('keyword'));
+  const { data } = await sb.from('seo_keywords').select('id, status').eq('id', id).eq('workspace_id', wsId).maybeSingle();
+  if (!data || data.status === 'written') return;
+  await sb.from('seo_keywords').update({ status: 'writing' }).eq('id', id);
+  await enqueue(sb, wsId, 'blog.write', { keyword_id: id }, `write:${id}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/blog`);
+}
+
+export async function skipKeyword(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await sb.from('seo_keywords').update({ status: str(form.get('undo')) ? 'idea' : 'skipped' }).eq('id', str(form.get('keyword'))).eq('workspace_id', wsId);
+  revalidatePath(`/app/${wsId}/blog`);
+}
+
+/** Edit an article. The SEO score is recomputed and the inbox summary kept in sync. */
+export async function saveArticle(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const id = str(form.get('post'));
+  const { data: post } = await sb.from('blog_posts').select('id, keyword, slug, faq, asset_id, excerpt').eq('id', id).eq('workspace_id', wsId).maybeSingle();
+  if (!post) return { error: 'Article not found.' };
+  const title = str(form.get('title'), 140);
+  const body = typeof form.get('body') === 'string' ? String(form.get('body')).slice(0, 60_000) : '';
+  const meta = { title: str(form.get('meta_title'), 90), description: str(form.get('meta_description'), 200) };
+  if (!title || body.trim().length < 200) return { error: 'The article needs a title and some content.' };
+  const { seoScore } = await import('@shipitloud/engine');
+  const { data: brain } = await sb.from('brand_brains').select('competitors').eq('workspace_id', wsId).maybeSingle();
+  const seo = seoScore({ keyword: post.keyword, title, slug: post.slug, metaTitle: meta.title, metaDescription: meta.description, body, faq: post.faq as { q: string; a: string }[], competitors: brain?.competitors ?? [] });
+  const { error } = await sb.from('blog_posts').update({ title, body, meta, seo_score: seo.score, seo_tips: seo.tips, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) return { error: 'Couldn’t save. Try again.' };
+  if (post.asset_id) {
+    const { data: a } = await sb.from('assets').select('content, flags').eq('id', post.asset_id).maybeSingle();
+    // Facts to check are cleared once the founder has removed every [verify] mark.
+    // Checks clear as the founder resolves them: [verify] marks removed, competitor statements reviewed or reworded.
+    const flags = ((a?.flags ?? []) as string[])
+      .filter((f) => (!/fact.* to check/.test(f) || seo.verify.length > 0) && (!/about other products/.test(f) || seo.claims.length > 0));
+    await sb.from('assets').update({
+      title: `Article: ${title}`.slice(0, 140), flags, publish_score: seo.score, qa_score: seo.score,
+      content: { ...(a?.content as object), text: `${post.excerpt ?? ''}\n\n${seo.words.toLocaleString('en-US')} words · SEO score ${seo.score}${seo.tips[0] ? ` · ${seo.tips[0]}` : ''}` },
+    }).eq('id', post.asset_id);
+  }
+  revalidatePath(`/app/${wsId}/blog`);
+  revalidatePath(`/app/${wsId}/blog/${id}`);
+  return { ok: true };
+}
+
+/** Take a published article down, or put it back up (it was approved before). */
+export async function setArticleLive(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb, ws } = await requireWorkspace(wsId);
+  const live = form.get('live') === 'true';
+  if (live && ws.kill_switch) return; // the kill switch stops publishing too
+  const { data: post } = await sb.from('blog_posts').select('id, published_at, status').eq('id', str(form.get('post'))).eq('workspace_id', wsId).maybeSingle();
+  if (!post || (live && !post.published_at)) return; // never-approved drafts go through the inbox
+  await sb.from('blog_posts').update({ status: live ? 'published' : 'unpublished', updated_at: new Date().toISOString() }).eq('id', post.id);
+  revalidatePath(`/app/${wsId}/blog`);
+  revalidatePath(`/app/${wsId}/blog/${post.id}`);
+}

@@ -51,11 +51,12 @@ export function Sidebar({ ws, pending, meter, email, notifications, children }: 
     { href: `${base}/waitlist`, label: 'Waitlist', icon: Icon.users },
     { href: `${base}/listening`, label: 'Listening', icon: Icon.ear },
     { href: `${base}/content`, label: 'Content', icon: Icon.pen },
+    { href: `${base}/blog`, label: 'Blog', icon: Icon.doc },
   ];
   const later = [
     { label: 'Analytics', icon: Icon.chart },
   ];
-  const title = path.endsWith('/activity') ? 'Activity' : path.endsWith('/settings') ? 'Settings' : path.endsWith('/brand') ? 'Brand' : path.endsWith('/kit') ? 'Launch kit' : path.endsWith('/plan') ? 'Launch plan' : path.endsWith('/waitlist') ? 'Waitlist' : path.endsWith('/listening') ? 'Listening' : path.endsWith('/content') ? 'Content' : 'Inbox';
+  const title = path.endsWith('/activity') ? 'Activity' : path.endsWith('/settings') ? 'Settings' : path.endsWith('/brand') ? 'Brand' : path.endsWith('/kit') ? 'Launch kit' : path.endsWith('/plan') ? 'Launch plan' : path.endsWith('/waitlist') ? 'Waitlist' : path.endsWith('/listening') ? 'Listening' : path.endsWith('/content') ? 'Content' : path.includes('/blog') ? 'Blog' : 'Inbox';
 
   return (
     <>
@@ -66,7 +67,7 @@ export function Sidebar({ ws, pending, meter, email, notifications, children }: 
         </div>
         <nav className="pr-nav" aria-label="Workspace">
           {nav.map((n) => (
-            <Link key={n.href} href={n.href} aria-current={path === n.href ? 'page' : undefined}>
+            <Link key={n.href} href={n.href} aria-current={path === n.href || path.startsWith(`${n.href}/`) ? 'page' : undefined}>
               {n.icon}{n.label}{!!n.count && <span className="count">{n.count}</span>}
             </Link>
           ))}

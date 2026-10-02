@@ -29,12 +29,12 @@ export type TrustDecision =
 // Replies auto-approve only in Full trust, and only where ban risk is low.
 const LOW_BAN_RISK_REPLY_PLATFORMS = new Set(['bluesky', 'hn', 'indiehackers', 'github']);
 // Never auto-approved in any mode.
-const ALWAYS_MANUAL: AssetType[] = ['ad_creative'];
+const ALWAYS_MANUAL: AssetType[] = ['ad_creative', 'article'];
 
 export function decideTrust(asset: TrustInput, ws: TrustSettings): TrustDecision {
   if (ws.kill_switch) return { auto: false, reason: 'Kill switch is on' };
   if (ws.trust_mode === 'manual') return { auto: false, reason: 'Manual mode' };
-  if (ALWAYS_MANUAL.includes(asset.type)) return { auto: false, reason: 'Ads always need you' };
+  if (ALWAYS_MANUAL.includes(asset.type)) return { auto: false, reason: asset.type === 'article' ? 'Articles always need you' : 'Ads always need you' };
   if (asset.flags.length) return { auto: false, reason: `Flagged: ${asset.flags.join(', ')}` };
   if (asset.confidence == null) return { auto: false, reason: 'No confidence score yet' };
   if (asset.confidence < ws.trust_threshold) return { auto: false, reason: `Confidence ${asset.confidence} is below ${ws.trust_threshold}` };

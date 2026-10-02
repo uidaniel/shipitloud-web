@@ -31,6 +31,7 @@ test('replies need the founder in trust mode; full trust only on low-risk platfo
 });
 test('ads and the kill switch block every mode', () => {
   assert.equal(decideTrust({ ...post, type: 'ad_creative' }, { ...trust, trust_mode: 'full' }).auto, false);
+  assert.equal(decideTrust({ ...post, type: 'article' }, { ...trust, trust_mode: 'full' }).reason, 'Articles always need you');
   assert.equal(decideTrust(post, { ...trust, trust_mode: 'full', kill_switch: true }).auto, false);
 });
 
@@ -106,6 +107,16 @@ test('automatic providers are simulated in test mode, live only with a token', a
   assert.deepEqual([live.status, calls], ['executed', 1]);
   const noToken = await execute(memoryRepo(), { ...req, provider: 'fakeapi', idempotencyKey: 'f3' }, { simulate: false });
   assert.equal(noToken.status, 'copy_and_post');
+});
+
+test('internal providers publish in test mode without a token, but still obey the kill switch', async () => {
+  let calls = 0;
+  registerProvider({ id: 'fakeblog', automatic: true, internal: true, async execute() { calls++; return { url: '/blog/x/post' }; } });
+  const repo = memoryRepo();
+  const row = await execute(repo, { ...req, provider: 'fakeblog', idempotencyKey: 'i1' }, { simulate: true });
+  assert.deepEqual([row.status, calls, repo.asset.status], ['executed', 1, 'published']);
+  const killed = await execute(memoryRepo({ kill: true }), { ...req, provider: 'fakeblog', idempotencyKey: 'i2' }, { simulate: true });
+  assert.deepEqual([killed.status, calls], ['blocked', 1]);
 });
 
 test('a provider error is recorded as failed', async () => {

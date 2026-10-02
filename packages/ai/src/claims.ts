@@ -35,6 +35,16 @@ export function findUnsupportedClaims(text: string, facts: string): string[] {
   if (/(?:^|\n|\.\s+)next:|\bcoming soon\b|\bwe'?re (?:now )?(?:building|adding|working on)\b|\bsoon you'?ll\b/i.test(text) && !/coming soon|next:/.test(f)) {
     flags.add('Mentions a future plan: confirm it\'s real');
   }
+  // Security and privacy promises need to be true of the product.
+  for (const m of text.matchAll(/\b(encrypted|encryption|bank[- ]level|bank[- ]grade|secure|securely|gdpr[- ]compliant|pci[- ]compliant|soc ?2)\b/gi)) {
+    if (!f.includes(m[0].toLowerCase())) { flags.add(`Security claim: "${m[0]}". Check it's accurate`); break; }
+  }
+  // Outcomes about other people ("most freelancers who try it stay").
+  for (const m of text.matchAll(/\bmost (?:[\w-]+ ){0,4}who (?:try|use|switch|join)[^.!?]{0,40}/gi)) flags.add(`Unverified outcome: "${m[0].trim()}"`);
+  // Pricing promises must match real pricing.
+  for (const m of text.matchAll(/\b(free to try|free trial|free plan|free forever|no credit card|only pay when|money[- ]back|cancel anytime|is free)\b/gi)) {
+    if (!f.includes(m[0].toLowerCase()) && !/\bfree\b/.test(f)) flags.add(`Pricing claim: "${m[0]}". Make sure it matches your real pricing`);
+  }
   // Stories about users or past events must be real; the founder confirms them.
   if (/\b(?:a|one of our|our|my|some)\s+(?:beta\s+)?(?:users?|customers?|clients?|testers?)\s+(?:asked|told|said|wrote|messaged|requested|kept|wanted|emailed)\b/i.test(text)) {
     flags.add('A story about a user: confirm it really happened');

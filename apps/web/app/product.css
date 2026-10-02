@@ -397,3 +397,26 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 .pr-voice ul { padding-left: 18px; display: grid; gap: 4px; }
 .pr-btn.is-on { color: var(--ok); }
 @media (max-width: 560px) { .pr-voice > div { grid-template-columns: 1fr; gap: 2px; } .pr-tip { display: none; } }
+
+/* Blog (in app) */
+.pr-blogbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 14px; min-width: 0; }
+.pr-blogbar a.pr-link { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.pr-prefix { display: flex; align-items: stretch; border: 1px solid var(--line-2); border-radius: 9px; overflow: hidden; background: var(--panel); }
+.pr-prefix span { display: flex; align-items: center; padding: 0 10px; color: var(--faint); font-size: 13px; background: var(--panel-2); border-right: 1px solid var(--line); white-space: nowrap; max-width: 55%; overflow: hidden; text-overflow: ellipsis; }
+.pr-prefix .pr-input { border: 0; border-radius: 0; min-width: 0; }
+.pr-inline-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.pr-inline-form .pr-input { flex: 1; min-width: 200px; }
+.pr-prio { min-width: 34px; height: 24px; border-radius: 7px; display: grid; place-items: center; font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; background: var(--panel-2); color: var(--muted); }
+.pr-prio.hi { background: var(--ok-bg); color: var(--ok); } .pr-prio.mid { background: var(--warn-bg); color: var(--warn); }
+.pr-article-grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 320px; align-items: start; margin-top: 16px; }
+@media (max-width: 1080px) { .pr-article-grid { grid-template-columns: minmax(0, 1fr); } }
+.pr-preview { --accent: var(--violet-soft); --muted: var(--muted); --soft: var(--panel-2); --line: var(--line); font-size: 17px; max-width: 720px; }
+.pr-editor { min-height: 560px; font-size: 15px; line-height: 1.6; }
+.pr-tips { margin: 0; padding: 0 18px 16px 34px; display: grid; gap: 8px; font-size: 13px; color: var(--muted); }
+.pr-tips b { color: var(--text); font-weight: 600; }
+.pr-serp { display: grid; gap: 4px; }
+.pr-serp span { font-size: 12px; color: var(--faint); overflow-wrap: anywhere; }
+.pr-serp b { color: #a8c7fa; font-weight: 500; font-size: 17px; }
+.pr-serp p { margin: 0; font-size: 13px; color: var(--muted); }
+.pr-count-hint { float: right; color: var(--faint); font-variant-numeric: tabular-nums; }
+.pr-count-hint.over { color: var(--warn); }
