@@ -23,5 +23,21 @@ export function findUnsupportedClaims(text: string, facts: string): string[] {
   for (const m of text.matchAll(/\b\d[\d,.]*\s?(?:%|percent|users|customers|founders|freelancers|signups|people)\b/gi)) {
     if (!f.includes(m[0].toLowerCase())) flags.add(`Unverified number: "${m[0]}"`);
   }
+  // Absolute claims nobody can back: "works every time", "every freelancer", "always works".
+  for (const m of text.matchAll(/\b(works every time|always works|never fails|every (?:single )?(?:freelancer|user|customer|founder|business|client)s?(?: we know)?|everyone loves|no one else)\b/gi)) {
+    flags.add(`Absolute claim: "${m[0]}"`);
+  }
+  // Before/after results ("from 30 days to 7") need a real source.
+  for (const m of text.matchAll(/\bfrom\s+\d[\d,.]*\s*(?:days?|hours?|weeks?|minutes?|%|x)?\s+to\s+\d[\d,.]*\b/gi)) {
+    if (!f.includes(m[0].toLowerCase())) flags.add(`Unverified result: "${m[0]}"`);
+  }
+  // Promises about the roadmap must be real plans.
+  if (/(?:^|\n|\.\s+)next:|\bcoming soon\b|\bwe'?re (?:now )?(?:building|adding|working on)\b|\bsoon you'?ll\b/i.test(text) && !/coming soon|next:/.test(f)) {
+    flags.add('Mentions a future plan: confirm it\'s real');
+  }
+  // Stories about users or past events must be real; the founder confirms them.
+  if (/\b(?:a|one of our|our|my|some)\s+(?:beta\s+)?(?:users?|customers?|clients?|testers?)\s+(?:asked|told|said|wrote|messaged|requested|kept|wanted|emailed)\b/i.test(text)) {
+    flags.add('A story about a user: confirm it really happened');
+  }
   return [...flags];
 }

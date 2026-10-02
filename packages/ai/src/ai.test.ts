@@ -67,3 +67,18 @@ test('video script mock fits the shots and the stage', () => {
   assert.equal(mockVideoScript(b, 2, true).cta, 'Try it today');
   assert.match(videoScriptPrompt(b, [{ headings: ['A'] }, { headings: [] }], false), /exactly 2 captions/);
 });
+
+test('claim checker flags absolute claims and user stories', () => {
+  const flags = findUnsupportedClaims('Works every time. One of our beta users asked for it. Works for every freelancer we know.', 'Invoice from WhatsApp');
+  assert.ok(flags.some((f) => f.toLowerCase().includes('works every time')), flags.join('|'));
+  assert.ok(flags.some((f) => f.includes('every freelancer we know')));
+  assert.ok(flags.some((f) => f.includes('story about a user')));
+  assert.deepEqual(findUnsupportedClaims('Send one reminder on day 3. Most invoices get paid.', 'x'), []);
+});
+
+test('claim checker flags invented results and roadmap promises', () => {
+  const flags = findUnsupportedClaims('One message moves most payments from 30 days to 7. Next: payment reminders.', 'Invoice from WhatsApp');
+  assert.ok(flags.some((f) => f.includes('from 30 days to 7')), flags.join('|'));
+  assert.ok(flags.some((f) => f.includes('future plan')));
+  assert.deepEqual(findUnsupportedClaims('Send one message on day 3, then move on to the next client.', 'x'), []);
+});

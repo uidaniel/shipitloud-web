@@ -7,7 +7,7 @@
   "types": "src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit -p .",
-    "test": "node --import tsx --test src/listening.test.ts src/preflight.test.ts"
+    "test": "node --import tsx --test src/*.test.ts"
   },
   "dependencies": {
     "@shipitloud/ai": "*",

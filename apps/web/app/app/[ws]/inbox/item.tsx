@@ -11,7 +11,7 @@ export interface InboxAsset {
   type: string;
   platform: string | null;
   title: string;
-  content: { text?: string; thread_url?: string; quote?: string; slots?: Record<string, string> };
+  content: { text?: string; thread_url?: string; quote?: string; slots?: Record<string, string>; score_tips?: string[] };
   file_url?: string | null;
   qa_score?: number | null;
   confidence: number | null;
@@ -103,6 +103,7 @@ export function InboxItem({ ws, asset, threshold }: { ws: string; asset: InboxAs
             )}
             {asset.content.quote && <blockquote className="pr-quote">{asset.content.quote}</blockquote>}
             {asset.content.text && <div className="pr-item-body">{asset.content.text}</div>}
+            {!!asset.content.score_tips?.length && <p className="pr-hint" style={{ margin: '8px 0 0' }}>Tip: {asset.content.score_tips[0]}</p>}
           </>
         )}
       </div>

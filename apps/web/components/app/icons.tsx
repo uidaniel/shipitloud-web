@@ -20,5 +20,6 @@ export const Icon = {
   undo: <svg width="14" height="14" viewBox="0 0 20 20"><path {...p} d="M7 5 3 9l4 4M3.5 9H12a5 5 0 0 1 0 10h-2" /></svg>,
   plus: <svg width="14" height="14" viewBox="0 0 20 20"><path {...p} strokeWidth={2} d="M10 4v12M4 10h12" /></svg>,
   users: <svg width="16" height="16" viewBox="0 0 20 20"><circle {...p} cx="8" cy="7" r="3" /><path {...p} d="M2.5 16.5c.6-2.8 2.8-4.5 5.5-4.5s4.9 1.7 5.5 4.5M13 4.2a3 3 0 0 1 0 5.6M14.5 12.3c1.6.6 2.6 2 3 4.2" /></svg>,
+  pen: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M3.5 16.5 4.5 12 13 3.5l3.5 3.5L8 15.5zM11 5.5l3.5 3.5" /></svg>,
   shield: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M10 2.8 4.5 5v4.3c0 3.6 2.4 6.3 5.5 7.9 3.1-1.6 5.5-4.3 5.5-7.9V5z" /></svg>,
 };

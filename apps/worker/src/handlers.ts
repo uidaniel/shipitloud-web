@@ -8,6 +8,7 @@ import { runReadiness } from './readiness.ts';
 import { makeDemoVideo } from './video.ts';
 import { draftReply } from '@shipitloud/engine';
 import { pollWorkspace } from './listen.ts';
+import { checkUpdates, learnVoice, makeContentWeek, postFromFormat, postsForUpdate, repurpose } from './content.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
 
@@ -42,6 +43,13 @@ async function ownerOf(workspaceId: string) {
 /** Queue a notification for the workspace owner (deduped by key). */
 export async function notifyOwner(workspaceId: string, kind: string, title: string, body?: string, url?: string, key?: string) {
   await enqueue(workspaceId, 'notify', { kind, title, body, url }, { key: key ? `notify:${key}` : undefined });
+}
+
+async function planLimitNotice(ws: string, fn: () => Promise<unknown>) {
+  try { await fn(); } catch (err) {
+    if (err instanceof PlanLimitError) { await notifyOwner(ws, 'cap_reached', 'Plan limit reached', err.message, `${appUrl()}/pricing`); return; }
+    throw err;
+  }
 }
 
 export const handlers: Record<string, Handler> = {
@@ -101,6 +109,37 @@ export const handlers: Record<string, Handler> = {
       if (err instanceof PlanLimitError) { await notifyOwner(job.workspace_id!, 'cap_reached', 'Plan limit reached', err.message, `${appUrl()}/pricing`); return; }
       throw err;
     }
+  },
+
+  /** Content engine. Plan limits become a notice, not a retry loop. */
+  async 'content.week'(_p, job) {
+    const ws = job.workspace_id!;
+    await planLimitNotice(ws, async () => {
+      const n = await makeContentWeek(ws);
+      await notifyOwner(ws, 'content_ready', `Next week is planned: ${n} posts`, 'Review them in your inbox. Each one is scheduled for its day.', `${appUrl()}/app/${ws}/content`);
+    });
+  },
+  async 'content.from_format'(p, job) {
+    await planLimitNotice(job.workspace_id!, () => postFromFormat(job.workspace_id!, String(p.slug), p.platform === 'linkedin' ? 'linkedin' : 'x', typeof p.topic === 'string' ? p.topic.slice(0, 500) : ''));
+  },
+  async 'content.repurpose'(p, job) {
+    await planLimitNotice(job.workspace_id!, async () => {
+      const r = await repurpose(job.workspace_id!, String(p.asset_id));
+      if (r.skipped) console.log(`[repurpose] poster skipped: ${r.skipped}`);
+    });
+  },
+  async 'content.voice'(_p, job) {
+    await learnVoice(job.workspace_id!);
+  },
+  async 'content.check_updates'(_p, job) {
+    await checkUpdates(job.workspace_id!);
+  },
+  async 'content.update_posts'(p, job) {
+    const ws = job.workspace_id!;
+    await planLimitNotice(ws, async () => {
+      const n = await postsForUpdate(ws, String(p.update_id));
+      if (n) await notifyOwner(ws, 'content_ready', 'You shipped something: posts are ready', 'We drafted an X post and a LinkedIn post about it.', `${appUrl()}/app/${ws}/inbox`);
+    });
   },
 
   async 'kit.readiness'(_p, job) {
@@ -194,6 +233,20 @@ export async function tick() {
   for (const c of due) {
     if (c.last_polled_at && now.getTime() - Date.parse(c.last_polled_at) < 19 * 60_000) continue;
     await enqueue(c.workspace_id, 'listen.poll', {}, { key: `poll:${c.workspace_id}:${slot}` });
+  }
+
+  // Content: check changelogs and GitHub releases every 6 hours.
+  const sixH = Math.floor(now.getTime() / (6 * 3600_000));
+  const sources = check(await db.from('content_sources').select('workspace_id, changelog_url, github_repo, last_checked_at, weekly_plan, last_planned_at'), 'content sources') as
+    { workspace_id: string; changelog_url: string | null; github_repo: string | null; last_checked_at: string | null; weekly_plan: boolean; last_planned_at: string | null }[];
+  for (const c of sources) {
+    if ((c.changelog_url || c.github_repo) && (!c.last_checked_at || now.getTime() - Date.parse(c.last_checked_at) > 5.9 * 3600_000)) {
+      await enqueue(c.workspace_id, 'content.check_updates', {}, { key: `updates:${c.workspace_id}:${sixH}` });
+    }
+    // Autopilot: plan next week on Sunday evening (UTC), at most once every 5 days.
+    if (c.weekly_plan && now.getUTCDay() === 0 && now.getUTCHours() >= 17 && (!c.last_planned_at || now.getTime() - Date.parse(c.last_planned_at) > 5 * 86_400_000)) {
+      await enqueue(c.workspace_id, 'content.week', {}, { key: `week:${c.workspace_id}:${now.toISOString().slice(0, 10)}` });
+    }
   }
 
   // Expire pending items whose moment has passed.

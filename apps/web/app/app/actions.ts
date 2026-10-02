@@ -63,7 +63,9 @@ export async function decide(form: FormData) {
     await sb.from('approvals').insert({ workspace_id: wsId, asset_id: assetId, status: 'rejected', decided_by: user.id });
   } else if (decision === 'approve' || decision === 'edit') {
     const edited = decision === 'edit' ? str(form.get('text'), 20000) : '';
-    const content = edited ? { ...(asset.content as object), text: edited } : asset.content;
+    // An edited thread is re-split on blank lines, so the posted parts match what the founder approved.
+    const prev = asset.content as { thread?: string[] };
+    const content = edited ? { ...prev, text: edited, ...(prev.thread ? { thread: edited.split(/\n\s*\n/).map((t) => t.trim()).filter((t) => t && !/^[—–\-\s]+$/.test(t)) } : {}) } : asset.content;
     await sb.from('assets').update({ status: 'approved', content, updated_at: now }).eq('id', assetId);
     await sb.from('approvals').insert({ workspace_id: wsId, asset_id: assetId, status: edited ? 'edited' : 'approved', decided_by: user.id });
     await enqueue(sb, wsId, 'asset.decided', { asset_id: assetId }, `decided:${assetId}:human`);
@@ -461,4 +463,89 @@ export async function revokeExtensionToken(form: FormData) {
   await requireWorkspace(wsId);
   await supabaseAdmin().from('extension_tokens').update({ revoked_at: new Date().toISOString() }).eq('id', str(form.get('id'))).eq('workspace_id', wsId);
   revalidatePath(`/app/${wsId}/settings`);
+}
+
+// ---------------------------------------------------------------- content engine
+export async function planWeek(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'content.week', {}, `week:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/content`);
+}
+
+export async function writeFromFormat(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const slug = str(form.get('slug'), 60);
+  const platform = str(form.get('platform')) === 'linkedin' ? 'linkedin' : 'x';
+  await enqueue(sb, wsId, 'content.from_format', { slug, platform, topic: str(form.get('topic'), 500) }, `fmt:${wsId}:${slug}:${platform}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/content`);
+}
+
+export async function repurposePost(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const id = str(form.get('asset'));
+  const { data } = await sb.from('assets').select('id').eq('id', id).eq('workspace_id', wsId).maybeSingle();
+  if (!data) return;
+  await enqueue(sb, wsId, 'content.repurpose', { asset_id: id }, `repurpose:${id}`);
+  revalidatePath(`/app/${wsId}/content`);
+}
+
+export async function saveContentSources(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const rawFeed = str(form.get('changelog_url'), 300);
+  const feed = rawFeed ? normalizeUrl(rawFeed) : null;
+  if (rawFeed && !feed) return { error: 'That feed link doesn’t look right.' };
+  const repo = str(form.get('github_repo'), 120).replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$|\/$/g, '');
+  if (repo && !/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'Use the owner/name form, like vercel/next.js.' };
+  const { error } = await sb.from('content_sources').upsert({ workspace_id: wsId, changelog_url: feed, github_repo: repo || null, weekly_plan: form.get('weekly_plan') === 'on', updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
+  if (error) return { error: 'Couldn’t save. Try again.' };
+  if (feed || repo) await enqueue(sb, wsId, 'content.check_updates', {}, `updates:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/content`);
+  return { ok: true };
+}
+
+export async function setWeeklyPlan(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await sb.from('content_sources').upsert({ workspace_id: wsId, weekly_plan: form.get('on') === 'true', updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
+  revalidatePath(`/app/${wsId}/content`);
+}
+
+/** A fresh webhook secret, shown once. GitHub signs every delivery with it. */
+export async function createWebhookSecret(_: unknown, form: FormData): Promise<{ secret?: string; error?: string }> {
+  const wsId = str(form.get('ws'));
+  await requireWorkspace(wsId);
+  const { randomBytes } = await import('node:crypto');
+  const secret = randomBytes(24).toString('hex');
+  const { error } = await supabaseAdmin().from('content_sources').upsert({ workspace_id: wsId, webhook_secret: secret, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
+  if (error) return { error: 'Couldn’t create it. Try again.' };
+  return { secret };
+}
+
+export async function addManualUpdate(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const title = str(form.get('title'), 200);
+  if (title.length < 4) return { error: 'Say what you shipped in a few words.' };
+  const { data, error } = await sb.from('product_updates').insert({ workspace_id: wsId, source: 'manual', external_id: `manual:${Date.now()}`, title, body: str(form.get('body'), 2000) || null, published_at: new Date().toISOString() }).select('id').single();
+  if (error || !data) return { error: 'Couldn’t save. Try again.' };
+  await enqueue(sb, wsId, 'content.update_posts', { update_id: data.id }, `update:${data.id}`);
+  revalidatePath(`/app/${wsId}/content`);
+  return { ok: true };
+}
+
+/** Save the founder's own posts (separated by a line with ---) and learn the voice from them. */
+export async function saveVoiceSamples(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const samples = str(form.get('samples'), 20_000).split(/\n\s*-{3,}\s*\n/).map((s) => s.trim()).filter((s) => s.length >= 20).slice(0, 12);
+  if (samples.length < 2) return { error: 'Paste at least two of your posts, with a line of --- between them.' };
+  const { error } = await sb.from('voice_profiles').update({ sample_posts: samples, updated_at: new Date().toISOString() }).eq('workspace_id', wsId);
+  if (error) return { error: 'Couldn’t save. Try again.' };
+  await enqueue(sb, wsId, 'content.voice', {}, `voice:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/content`);
+  return { ok: true };
 }

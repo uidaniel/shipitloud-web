@@ -72,3 +72,48 @@ export async function makePosters(workspaceId: string, opts: { templates?: strin
   if (skipped.length) console.log(`[posters] skipped: ${skipped.join(' | ')}`);
   return { made, skipped: skipped.length };
 }
+
+/** Cut text to a slot's limit at a word boundary, never mid-word, and drop dangling punctuation. */
+export function fitWords(text: string, max: number) {
+  const t = text.trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max + 1);
+  // Prefer ending on a whole clause; otherwise a whole word.
+  const clause = Math.max(cut.lastIndexOf(', '), cut.lastIndexOf('. '), cut.lastIndexOf('; '));
+  if (clause > max * 0.5) return cut.slice(0, clause).trim();
+  const at = cut.lastIndexOf(' ');
+  let out = (at > max * 0.5 ? cut.slice(0, at) : t.slice(0, max)).replace(/[\s,;:\-–]+$/, '');
+  // Don't end on a word that needs a next one ("lands in your").
+  for (let i = 0; i < 3; i++) out = out.replace(/\s+(a|an|the|your|my|our|their|in|on|at|to|of|and|or|for|with|from|by|is|are|that|which|who|when|so|but|as|than|into)$/i, '').replace(/[\s,;:\-–]+$/, '');
+  return out;
+}
+
+/** One poster from given words (used by repurposing): same brand look, QA and plan cap as the launch set. */
+export async function posterFromSlots(workspaceId: string, templateId: string, slotsIn: Record<string, string>, title: string, extra: { content?: Record<string, unknown>; scheduled_for?: string | null } = {}) {
+  const tpl = TEMPLATES.find((t) => t.id === templateId) ?? TEMPLATES.find((t) => t.id === 'quote')!;
+  // Keep only this template's slots, cut to their limits.
+  const slots = Object.fromEntries(Object.entries(tpl.slots).map(([k, spec]) => [k, fitWords(slotsIn[k] ?? '', spec.max)]).filter(([, v]) => v));
+  const ws = check(await db.from('workspaces').select('product_name, url').eq('id', workspaceId).single(), 'ws')!;
+  const kit = (await db.from('brand_kits').select('logo_url, palette').eq('workspace_id', workspaceId).maybeSingle()).data;
+  const logo = kit?.logo_url ? await prepareLogo(kit.logo_url) : null;
+  const theme = themeFromPalette([...(kit?.palette ?? []), ...(logo?.palette ?? [])]);
+  const format: FormatId = 'portrait';
+  const brand = { name: ws.product_name, url: ws.url, logo: logo?.dataUri ?? null };
+  const q = qa({ templateId: tpl.id, format, slots, theme, brand });
+  if (q.blocker) return { skipped: q.issues.join(', ') };
+  const { data: allowed } = await db.rpc('consume_usage', { p_workspace: workspaceId, p_metric: 'images', p_amount: 1, p_cost: 0 });
+  if (!allowed) return { skipped: 'monthly image limit reached' };
+  const png = await renderPng({ templateId: tpl.id, format, slots, theme, brand });
+  const path = `${workspaceId}/posters/${randomUUID()}.png`;
+  const up = await db.storage.from('assets').upload(path, png, { contentType: 'image/png', upsert: false });
+  if (up.error) throw new Error(`upload: ${up.error.message}`);
+  const fileUrl = db.storage.from('assets').getPublicUrl(path).data.publicUrl;
+  const asset = check(await db.from('assets').insert({
+    workspace_id: workspaceId, type: 'poster', platform: 'instagram', title,
+    content: { template: tpl.id, format, slots, qa_issues: q.issues, ...extra.content },
+    file_url: fileUrl, template_id: tpl.id, qa_score: q.score, publish_score: q.score, confidence: q.score, scheduled_for: extra.scheduled_for ?? null,
+    prompt_version: 'repurpose@1',
+  }).select('id').single(), 'poster asset')!;
+  await enqueue(workspaceId, 'asset.intake', { asset_id: asset.id }, { key: `intake:${asset.id}` });
+  return { assetId: asset.id as string };
+}
