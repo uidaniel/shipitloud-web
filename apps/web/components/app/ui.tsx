@@ -23,3 +23,17 @@ export function Submit({ children, pending: label, className = 'pr-btn pr-btn-pr
     </button>
   );
 }
+
+type Kept = { values?: Record<string, string | string[]> } | undefined;
+/** After a failed save, a field shows what was submitted; otherwise its saved value. */
+export function kept(state: Kept, name: string, fallback: string): string {
+  const v = state?.values?.[name];
+  return typeof v === 'string' ? v : Array.isArray(v) ? v.join('\n') : fallback;
+}
+/** Checkboxes: was it submitted? Radios (pass `value`): was this option the one submitted? */
+export function keptOn(state: Kept, name: string, fallback: boolean, value?: string): boolean {
+  if (!state?.values) return fallback;
+  const v = state.values[name];
+  if (value === undefined) return v !== undefined;
+  return v === value || (Array.isArray(v) && v.includes(value));
+}

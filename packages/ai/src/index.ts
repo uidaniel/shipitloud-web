@@ -8,3 +8,4 @@ export * from './prompts/listening.ts';
 export * from './prompts/content.ts';
 export * from './prompts/blog.ts';
 export * from './prompts/ugc.ts';
+export * from './prompts/email.ts';

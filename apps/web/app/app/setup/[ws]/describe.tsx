@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { Submit } from '@/components/app/ui';
+import { Submit, kept, keptOn } from '@/components/app/ui';
 import { buildFromDescription } from '../../actions';
 
 export function DescribeForm({ ws, initial }: { ws: string; initial: string }) {
@@ -16,7 +16,7 @@ export function DescribeForm({ ws, initial }: { ws: string; initial: string }) {
           name="description"
           className="pr-textarea"
           rows={6}
-          defaultValue={initial}
+          defaultValue={kept(state, 'description', initial)}
           placeholder="Balans lets freelancers in Nigeria send an invoice from WhatsApp and get paid straight to their bank. Clients just open a link, no app needed."
           autoFocus
         />

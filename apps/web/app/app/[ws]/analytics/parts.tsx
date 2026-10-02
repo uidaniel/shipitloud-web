@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { Submit } from '@/components/app/ui';
+import { Submit, kept, keptOn } from '@/components/app/ui';
 import { Icon } from '@/components/app/icons';
 import { makeShortLink } from '../../actions';
 
@@ -23,7 +23,7 @@ export function LinkForm({ ws, defaultTarget }: { ws: string; defaultTarget: str
       <input type="hidden" name="ws" value={ws} />
       <div className="pr-section-h"><h2>New tracked link</h2><p>For your bio, newsletter, a talk or anywhere else. Posts we publish get one automatically.</p></div>
       <div className="pr-section-b" style={{ display: 'grid', gap: 12 }}>
-        <div><label className="pr-label" htmlFor="lt">Page it opens</label><input id="lt" name="target" className="pr-input" defaultValue={defaultTarget} placeholder="yourproduct.com/pricing" /></div>
+        <div><label className="pr-label" htmlFor="lt">Page it opens</label><input id="lt" name="target" className="pr-input" defaultValue={kept(state, 'target', defaultTarget)} placeholder="yourproduct.com/pricing" /></div>
         <div className="pr-grid-2">
           <div>
             <label className="pr-label" htmlFor="ls">Where you’ll share it</label>

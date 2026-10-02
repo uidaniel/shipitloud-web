@@ -6,6 +6,8 @@ Everything below is already built in code. Each item is a dashboard setting, acc
 - [ ] Buy `shipitloud.com`. Point `app.shipitloud.com` at the web app and set `NEXT_PUBLIC_SITE_URL`.
 - [ ] Resend: verify the domain and set `RESEND_API_KEY` and `EMAIL_FROM`.
 - [ ] Supabase → Authentication → SMTP: use Resend. The built-in mailer only sends a few emails an hour, which is not enough for real signups.
+- [ ] Waitlist emails: set `ACTIONS_MODE=live` to really send. Until then every email is recorded as "simulated" and nothing leaves. Set `UNSUBSCRIBE_SECRET` and keep it stable, or old unsubscribe links stop working.
+- [ ] Founders' own sending domains (send as hello@theirproduct.com): add them through the Resend Domains API and set `email_settings.domain_verified`. Until then mail goes out as "Product via ShipItLoud".
 
 ## Supabase Auth (Authentication → URL configuration)
 - [ ] Site URL: the production app URL.

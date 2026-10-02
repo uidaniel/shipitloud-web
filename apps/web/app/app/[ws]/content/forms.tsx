@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { Submit } from '@/components/app/ui';
+import { Submit, kept, keptOn } from '@/components/app/ui';
 import { addManualUpdate, createWebhookSecret, saveContentSources, saveVoiceSamples } from '../../actions';
 
 function useSaved(state: { ok?: boolean }) {
@@ -30,14 +30,14 @@ export function SourcesForm({ ws, feed, repo, weekly }: { ws: string; feed: stri
       <div className="pr-section-b pr-grid-2">
         <div>
           <label className="pr-label" htmlFor="feed">Changelog or blog feed (RSS)</label>
-          <input id="feed" name="changelog_url" className="pr-input" defaultValue={feed} placeholder="yourproduct.com/changelog/rss.xml" />
+          <input id="feed" name="changelog_url" className="pr-input" defaultValue={kept(state, 'changelog_url', feed)} placeholder="yourproduct.com/changelog/rss.xml" />
         </div>
         <div>
           <label className="pr-label" htmlFor="repo">GitHub repository (public releases)</label>
-          <input id="repo" name="github_repo" className="pr-input" defaultValue={repo} placeholder="owner/name" />
+          <input id="repo" name="github_repo" className="pr-input" defaultValue={kept(state, 'github_repo', repo)} placeholder="owner/name" />
         </div>
         <label className="pr-check-row" style={{ gridColumn: '1 / -1' }}>
-          <input type="checkbox" name="weekly_plan" defaultChecked={weekly} />
+          <input type="checkbox" name="weekly_plan" defaultChecked={keptOn(state, 'weekly_plan', weekly)} />
           <span><b>Plan next week for me every Sunday</b><small>Five posts land in your inbox for approval. Nothing goes out without you unless you use trust mode.</small></span>
         </label>
       </div>
@@ -98,7 +98,7 @@ export function VoiceForm({ ws, samples }: { ws: string; samples: string[] }) {
       <input type="hidden" name="ws" value={ws} />
       <div className="pr-section-h"><h2>Your past posts</h2><p>Paste 3 to 10 posts you wrote yourself, with a line of <b>---</b> between them. Drafts will match how you write.</p></div>
       <div className="pr-section-b">
-        <textarea name="samples" className="pr-textarea" style={{ minHeight: 260 }} defaultValue={samples.join('\n\n---\n\n')} placeholder={'First post you wrote…\n\n---\n\nSecond post…'} />
+        <textarea name="samples" className="pr-textarea" style={{ minHeight: 260 }} defaultValue={kept(state, 'samples', samples.join('\n\n---\n\n'))} placeholder={'First post you wrote…\n\n---\n\nSecond post…'} />
       </div>
       <div className="pr-section-f"><Status state={state} saved={saved} text="Saved. Learning your voice…" /><Submit pending="Saving…">Save and learn my voice</Submit></div>
     </form>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { Submit } from '@/components/app/ui';
+import { Submit, kept, keptOn } from '@/components/app/ui';
 import { addKeyword, saveArticle, saveBlog } from '../../actions';
 
 function Saved({ state, text = 'Saved' }: { state: { ok?: boolean; error?: string }; text?: string }) {
@@ -29,8 +29,8 @@ export function BlogSettings({ ws, slug, title, description, origin }: { ws: str
           <div className="pr-prefix"><span>{origin}/blog/</span><input id="bslug" name="slug" className="pr-input" value={s} onChange={(e) => setS(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} maxLength={40} /></div>
         </div>
         <div className="pr-grid-2">
-          <div><label className="pr-label" htmlFor="btitle">Title</label><input id="btitle" name="title" className="pr-input" defaultValue={title} maxLength={80} /></div>
-          <div><label className="pr-label" htmlFor="bdesc">One-line description</label><input id="bdesc" name="description" className="pr-input" defaultValue={description} maxLength={200} /></div>
+          <div><label className="pr-label" htmlFor="btitle">Title</label><input id="btitle" name="title" className="pr-input" defaultValue={kept(state, 'title', title)} maxLength={80} /></div>
+          <div><label className="pr-label" htmlFor="bdesc">One-line description</label><input id="bdesc" name="description" className="pr-input" defaultValue={kept(state, 'description', description)} maxLength={200} /></div>
         </div>
       </div>
       <div className="pr-section-f"><Saved state={state} /><Submit pending="Saving…">Save</Submit></div>
@@ -59,7 +59,7 @@ export function ArticleEditor({ ws, post }: { ws: string; post: { id: string; ti
       <input type="hidden" name="ws" value={ws} />
       <input type="hidden" name="post" value={post.id} />
       <div className="pr-section-b" style={{ display: 'grid', gap: 14 }}>
-        <div><label className="pr-label" htmlFor="at">Title</label><input id="at" name="title" className="pr-input" defaultValue={post.title} maxLength={140} /></div>
+        <div><label className="pr-label" htmlFor="at">Title</label><input id="at" name="title" className="pr-input" defaultValue={kept(state, 'title', post.title)} maxLength={140} /></div>
         <div className="pr-grid-2">
           <div>
             <label className="pr-label" htmlFor="amt">Search title <span className={`pr-count-hint ${mt.length > 60 ? 'over' : ''}`}>{mt.length}/60</span></label>
@@ -72,7 +72,7 @@ export function ArticleEditor({ ws, post }: { ws: string; post: { id: string; ti
         </div>
         <div>
           <label className="pr-label" htmlFor="ab">Article (Markdown: ## for headings, - for lists, [text](link) for links)</label>
-          <textarea id="ab" name="body" className="pr-textarea pr-editor" defaultValue={post.body} spellCheck />
+          <textarea id="ab" name="body" className="pr-textarea pr-editor" defaultValue={kept(state, 'body', post.body)} spellCheck />
         </div>
       </div>
       <div className="pr-section-f"><Saved state={state} text="Saved. Score updated." /><Submit pending="Saving…">Save changes</Submit></div>

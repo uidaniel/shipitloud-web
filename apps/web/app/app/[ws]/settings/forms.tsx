@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { Submit } from '@/components/app/ui';
+import { Submit, kept, keptOn } from '@/components/app/ui';
 import { changePassword, createExtensionToken, revokeExtensionToken, saveAutomation, saveNotifications, saveProduct, setKillSwitch, signOutEverywhere } from '../../actions';
 import { PasswordInput } from '@/components/app/auth';
 
@@ -39,7 +39,7 @@ export function AutomationForm({ ws, mode, threshold, dropped }: { ws: string; m
         <div className="pr-modes" role="radiogroup" aria-label="Approval mode">
           {MODES.map((o) => (
             <label key={o.id} className="pr-mode">
-              <input type="radio" name="trust_mode" value={o.id} defaultChecked={mode === o.id} onChange={() => setM(o.id)} />
+              <input type="radio" name="trust_mode" value={o.id} defaultChecked={keptOn(state, 'trust_mode', mode === o.id, o.id)} onChange={() => setM(o.id)} />
               <b>{o.name}</b>
               <span>{o.desc}</span>
             </label>
@@ -48,7 +48,7 @@ export function AutomationForm({ ws, mode, threshold, dropped }: { ws: string; m
         {m !== 'manual' && (
           <div className="pr-fade-in">
             <label className="pr-label" htmlFor="th">Only auto-approve items that score at least <b style={{ color: 'var(--text)' }}>{value}</b> / 100</label>
-            <input id="th" className="pr-range" type="range" name="trust_threshold" min={50} max={100} step={1} defaultValue={threshold} onChange={(e) => setValue(Number(e.target.value))} />
+            <input id="th" className="pr-range" type="range" name="trust_threshold" min={50} max={100} step={1} defaultValue={kept(state, 'trust_threshold', String(threshold))} onChange={(e) => setValue(Number(e.target.value))} />
             <p className="pr-hint">Higher means fewer items go out on their own. Auto-approved items wait 15 minutes so you can undo them.</p>
           </div>
         )}
@@ -87,12 +87,12 @@ export function ProductForm({ ws, name, url, launchDate }: { ws: string; name: s
       <div className="pr-section-h"><h2>Product</h2></div>
       <div className="pr-section-b">
         <div className="pr-grid-2">
-          <div><label className="pr-label" htmlFor="pn">Name</label><input id="pn" name="product_name" className="pr-input" defaultValue={name} required maxLength={80} /></div>
-          <div><label className="pr-label" htmlFor="pu">Link</label><input id="pu" name="url" className="pr-input" defaultValue={url} placeholder="yourproduct.com" inputMode="url" /></div>
+          <div><label className="pr-label" htmlFor="pn">Name</label><input id="pn" name="product_name" className="pr-input" defaultValue={kept(state, 'product_name', name)} required maxLength={80} /></div>
+          <div><label className="pr-label" htmlFor="pu">Link</label><input id="pu" name="url" className="pr-input" defaultValue={kept(state, 'url', url)} placeholder="yourproduct.com" inputMode="url" /></div>
         </div>
         <div style={{ maxWidth: 260 }}>
           <label className="pr-label" htmlFor="ld">Launch date</label>
-          <input id="ld" name="launch_date" type="date" className="pr-input" defaultValue={launchDate} />
+          <input id="ld" name="launch_date" type="date" className="pr-input" defaultValue={kept(state, 'launch_date', launchDate)} />
           <p className="pr-hint">Your 30-day plan counts down to this.</p>
         </div>
       </div>
@@ -113,16 +113,16 @@ export function NotificationsForm({ email, slack, webhook, address }: { email: b
       <div className="pr-section-b">
         <div className="pr-row">
           <div className="pr-row-t"><b>Email</b><span>{address}</span></div>
-          <span className="pr-switch"><input type="checkbox" name="email" defaultChecked={email} aria-label="Email notifications" /><i /></span>
+          <span className="pr-switch"><input type="checkbox" name="email" defaultChecked={keptOn(state, 'email', email)} aria-label="Email notifications" /><i /></span>
         </div>
         <div className="pr-row">
           <div className="pr-row-t"><b>Slack</b><span>Post to a channel through an incoming webhook.</span></div>
-          <span className="pr-switch"><input type="checkbox" name="slack" defaultChecked={slack} onChange={(e) => setSlackOn(e.target.checked)} aria-label="Slack notifications" /><i /></span>
+          <span className="pr-switch"><input type="checkbox" name="slack" defaultChecked={keptOn(state, 'slack', slack)} onChange={(e) => setSlackOn(e.target.checked)} aria-label="Slack notifications" /><i /></span>
         </div>
         {slackOn && (
           <div className="pr-fade-in">
             <label className="pr-label" htmlFor="wh">Slack webhook URL</label>
-            <input id="wh" name="slack_webhook" className="pr-input" defaultValue={webhook} placeholder="https://hooks.slack.com/services/…" />
+            <input id="wh" name="slack_webhook" className="pr-input" defaultValue={kept(state, 'slack_webhook', webhook)} placeholder="https://hooks.slack.com/services/…" />
           </div>
         )}
         {!slackOn && <input type="hidden" name="slack_webhook" value={webhook} />}

@@ -463,3 +463,4 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 @media (max-width: 640px) { .hide-sm { display: none; } }
 .pr-stats { grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
 .pr-section > .pr-table-wrap { border-radius: 0 0 12px 12px; }
+.pr-email-subject { margin: 10px 0 0; font-weight: 600; font-size: 14px; } .pr-email-subject span { color: var(--faint); font-weight: 500; margin-right: 8px; font-size: 12px; }

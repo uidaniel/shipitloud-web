@@ -12,7 +12,7 @@ export interface InboxAsset {
   type: string;
   platform: string | null;
   title: string;
-  content: { text?: string; thread_url?: string; quote?: string; slots?: Record<string, string>; score_tips?: string[]; post_id?: string };
+  content: { text?: string; thread_url?: string; quote?: string; slots?: Record<string, string>; score_tips?: string[]; post_id?: string; subject?: string };
   file_url?: string | null;
   qa_score?: number | null;
   confidence: number | null;
@@ -102,6 +102,7 @@ export function InboxItem({ ws, asset, threshold }: { ws: string; asset: InboxAs
               // eslint-disable-next-line @next/next/no-img-element
               <a href={asset.file_url} target="_blank" rel="noopener noreferrer" className="pr-poster"><img src={asset.file_url} alt={asset.title} loading="lazy" /></a>
             )}
+            {asset.type === 'email' && asset.content.subject && <p className="pr-email-subject"><span>Subject</span>{asset.content.subject}</p>}
             {asset.content.quote && <blockquote className="pr-quote">{asset.content.quote}</blockquote>}
             {asset.content.text && <div className="pr-item-body">{asset.content.text}</div>}
             {!!asset.content.score_tips?.length && <p className="pr-hint" style={{ margin: '8px 0 0' }}>Tip: {asset.content.score_tips[0]}</p>}

@@ -5,6 +5,8 @@ export interface ProviderResult {
   url?: string;
   /** Present when the founder must finish the action by hand. */
   copyAndPost?: { text: string; openUrl: string };
+  /** Counts worth keeping in the audit log (e.g. emails sent, simulated, failed). */
+  stats?: Record<string, number>;
 }
 
 export interface ProviderContext {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { Submit } from '@/components/app/ui';
+import { Submit, kept, keptOn } from '@/components/app/ui';
 import { PlatformIcon, type Platform } from '@/components/space/platform-icons';
 import { saveListening } from '../../actions';
 
@@ -34,12 +34,12 @@ export function ListenForm({ ws, values, options, monitors, start }: { ws: strin
         <div className="pr-grid-2">
           <div>
             <label className="pr-label" htmlFor="kw">Phrases, one per line</label>
-            <textarea id="kw" name="keywords" className="pr-textarea" defaultValue={values.keywords.join('\n')} placeholder={'invoice app\nchasing clients for payment'} />
+            <textarea id="kw" name="keywords" className="pr-textarea" defaultValue={kept(state, 'keywords', values.keywords.join('\n'))} placeholder={'invoice app\nchasing clients for payment'} />
             <p className="pr-hint">Problems people complain about and what they search for. Up to 10.</p>
           </div>
           <div>
             <label className="pr-label" htmlFor="cp">Competitors, one per line</label>
-            <textarea id="cp" name="competitors" className="pr-textarea" defaultValue={values.competitors.join('\n')} placeholder={'FreshBooks\nWave'} />
+            <textarea id="cp" name="competitors" className="pr-textarea" defaultValue={kept(state, 'competitors', values.competitors.join('\n'))} placeholder={'FreshBooks\nWave'} />
             <p className="pr-hint">We also look for &ldquo;alternative to&rdquo; each one. Write names the way the brand does. Up to 5.</p>
           </div>
         </div>
@@ -52,7 +52,7 @@ export function ListenForm({ ws, values, options, monitors, start }: { ws: strin
               const disabled = !!o.locked || (!on && full);
               return (
                 <label key={o.id} className="pr-source" data-on={on || undefined} aria-disabled={disabled || undefined}>
-                  <input type="checkbox" name="sources" value={o.id} checked={on} disabled={disabled}
+                  <input type="checkbox" name="sources" value={o.id} defaultChecked={keptOn(state, 'sources', values.sources.includes(o.id), o.id)} disabled={disabled}
                     onChange={(e) => setPicked((p) => (e.target.checked ? [...p, o.id] : p.filter((x) => x !== o.id)))} />
                   <PlatformIcon name={o.icon} size={22} />
                   <span><b>{o.name}</b><small>{o.locked ?? o.note}</small></span>
@@ -65,7 +65,7 @@ export function ListenForm({ ws, values, options, monitors, start }: { ws: strin
         {picked.includes('rss') && (
           <div className="pr-fade-in">
             <label className="pr-label" htmlFor="rss">Feed links, one per line</label>
-            <textarea id="rss" name="rss_feeds" className="pr-textarea" style={{ minHeight: 80 }} defaultValue={values.rss_feeds.join('\n')} placeholder="https://news.example.com/feed.xml" />
+            <textarea id="rss" name="rss_feeds" className="pr-textarea" style={{ minHeight: 80 }} defaultValue={kept(state, 'rss_feeds', values.rss_feeds.join('\n'))} placeholder="https://news.example.com/feed.xml" />
             <p className="pr-hint">Blogs, newsletters or forums with an RSS feed. We keep posts that mention your phrases.</p>
           </div>
         )}
@@ -80,7 +80,7 @@ export function ListenForm({ ws, values, options, monitors, start }: { ws: strin
             </div>
             <div>
               <label className="pr-label" htmlFor="ex">Ignore posts containing, one per line</label>
-              <textarea id="ex" name="exclude" className="pr-textarea" style={{ minHeight: 70 }} defaultValue={values.exclude.join('\n')} placeholder={'crypto\nhiring'} />
+              <textarea id="ex" name="exclude" className="pr-textarea" style={{ minHeight: 70 }} defaultValue={kept(state, 'exclude', values.exclude.join('\n'))} placeholder={'crypto\nhiring'} />
             </div>
           </div>
         </details>

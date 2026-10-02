@@ -4,6 +4,19 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireUser, requireWorkspace, supabaseAdmin } from '@/lib/supabase/server';
 
+export type FormState = { ok?: boolean; error?: string; values?: Record<string, string | string[]> };
+
+/** A failed save echoes back what was submitted (never passwords), so the form keeps it: React resets forms after a submit. */
+function fail(form: FormData, error: string): FormState {
+  const values: Record<string, string | string[]> = {};
+  for (const k of new Set(form.keys())) {
+    if (k.startsWith('$ACTION') || ['password', 'current', 'confirm'].includes(k)) continue;
+    const all = form.getAll(k).filter((v): v is string => typeof v === 'string');
+    values[k] = all.length > 1 ? all : all[0] ?? '';
+  }
+  return { error, values };
+}
+
 const str = (v: FormDataEntryValue | null, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
 function normalizeUrl(input: string): string | null {
@@ -22,15 +35,15 @@ async function enqueue(sb: Awaited<ReturnType<typeof requireUser>>['sb'], ws: st
 }
 
 // ---------------------------------------------------------------- workspaces
-export async function createWorkspace(_: unknown, form: FormData): Promise<{ error?: string }> {
+export async function createWorkspace(_: unknown, form: FormData): Promise<FormState> {
   const { sb, user } = await requireUser();
   const name = str(form.get('product_name'), 80);
   const rawUrl = str(form.get('url'), 300);
   const url = normalizeUrl(rawUrl);
-  if (!name) return { error: 'Give your product a name.' };
-  if (rawUrl && !url) return { error: 'That link doesn’t look right. Try something like yourproduct.com' };
+  if (!name) return fail(form, 'Give your product a name.');
+  if (rawUrl && !url) return fail(form, 'That link doesn’t look right. Try something like yourproduct.com');
   const { data, error } = await sb.from('workspaces').insert({ owner_id: user.id, product_name: name, url }).select('id').single();
-  if (error || !data) return { error: 'Couldn’t create your workspace. Try again.' };
+  if (error || !data) return fail(form, 'Couldn’t create your workspace. Try again.');
   await Promise.all([
     sb.from('brand_brains').insert({ workspace_id: data.id, status: url ? 'building' : 'idle' }),
     sb.from('brand_kits').insert({ workspace_id: data.id }),
@@ -112,11 +125,11 @@ export async function markPosted(form: FormData) {
 }
 
 // ---------------------------------------------------------------- settings
-export async function saveAutomation(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function saveAutomation(_: unknown, form: FormData): Promise<FormState> {
   const wsId = str(form.get('ws'));
   const { sb, ws } = await requireWorkspace(wsId);
   const mode = str(form.get('trust_mode'));
-  if (!['manual', 'trust', 'full'].includes(mode)) return { error: 'Pick a mode.' };
+  if (!['manual', 'trust', 'full'].includes(mode)) return fail(form, 'Pick a mode.');
   const threshold = Math.max(50, Math.min(100, Number(form.get('trust_threshold')) || 85));
   const patch: Record<string, unknown> = { trust_mode: mode, trust_threshold: threshold };
   if (mode !== ws.trust_mode && mode !== 'manual') { patch.trust_dropped_at = null; patch.trust_dropped_reason = null; }
@@ -132,24 +145,24 @@ export async function setKillSwitch(form: FormData) {
   revalidatePath(`/app/${wsId}`, 'layout');
 }
 
-export async function saveProduct(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function saveProduct(_: unknown, form: FormData): Promise<FormState> {
   const wsId = str(form.get('ws'));
   const { sb } = await requireWorkspace(wsId);
   const name = str(form.get('product_name'), 80);
   const rawUrl = str(form.get('url'));
   const url = normalizeUrl(rawUrl);
   const launch = str(form.get('launch_date'), 10);
-  if (!name) return { error: 'Your product needs a name.' };
-  if (rawUrl && !url) return { error: 'That link doesn’t look right.' };
+  if (!name) return fail(form, 'Your product needs a name.');
+  if (rawUrl && !url) return fail(form, 'That link doesn’t look right.');
   const { error } = await sb.from('workspaces').update({ product_name: name, url, launch_date: launch || null }).eq('id', wsId);
   revalidatePath(`/app/${wsId}`, 'layout');
   return error ? { error: 'Couldn’t save. Try again.' } : { ok: true };
 }
 
-export async function saveNotifications(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function saveNotifications(_: unknown, form: FormData): Promise<FormState> {
   const { sb, user } = await requireUser();
   const hook = str(form.get('slack_webhook'), 500);
-  if (hook && !/^https:\/\/hooks\.slack\.com\//.test(hook)) return { error: 'Slack webhooks start with https://hooks.slack.com/' };
+  if (hook && !/^https:\/\/hooks\.slack\.com\//.test(hook)) return fail(form, 'Slack webhooks start with https://hooks.slack.com/');
   const prefs = { email: form.get('email') === 'on', slack: form.get('slack') === 'on' && !!hook, slack_webhook: hook || undefined, push: false, whatsapp: false };
   const { error } = await sb.from('profiles').update({ notification_prefs: prefs }).eq('id', user.id);
   revalidatePath('/app', 'layout');
@@ -176,26 +189,26 @@ export async function signOutEverywhere() {
 }
 
 /** Change (or, for magic-link accounts, set) the password. The current one is checked first when there is one. */
-export async function changePassword(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function changePassword(_: unknown, form: FormData): Promise<FormState> {
   const { sb, user } = await requireUser();
   const current = typeof form.get('current') === 'string' ? String(form.get('current')) : '';
   const next = typeof form.get('password') === 'string' ? String(form.get('password')) : '';
   const confirm = typeof form.get('confirm') === 'string' ? String(form.get('confirm')) : '';
-  if (next.length < 8) return { error: 'Use at least 8 characters.' };
-  if (next !== confirm) return { error: 'The two new passwords don’t match.' };
+  if (next.length < 8) return fail(form, 'Use at least 8 characters.');
+  if (next !== confirm) return fail(form, 'The two new passwords don’t match.');
   if (user.user_metadata?.has_password) {
-    if (!current) return { error: 'Enter your current password.' };
+    if (!current) return fail(form, 'Enter your current password.');
     // Check it on a throwaway client so this session isn't touched.
     const { createClient } = await import('@supabase/supabase-js');
     const probe = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
     const { error } = await probe.auth.signInWithPassword({ email: user.email!, password: current });
-    if (error) return { error: 'Your current password isn’t right.' };
+    if (error) return fail(form, 'Your current password isn’t right.');
     await probe.auth.signOut({ scope: 'local' });
   }
   const { error } = await sb.auth.updateUser({ password: next, data: { has_password: true } });
   if (error) {
     const m = error.message.toLowerCase();
-    return { error: m.includes('same') ? 'That’s your current password. Pick a new one.' : m.includes('pwned') || m.includes('weak') ? 'That password has shown up in a data breach. Pick another one.' : 'Couldn’t change it. Try again.' };
+    return fail(form, m.includes('same') ? 'That’s your current password. Pick a new one.' : m.includes('pwned') || m.includes('weak') ? 'That password has shown up in a data breach. Pick another one.' : 'Couldn’t change it. Try again.');
   }
   return { ok: true };
 }
@@ -228,11 +241,11 @@ const lines = (v: FormDataEntryValue | null, maxItems = 15) =>
   str(v, 4000).split('\n').map((l) => l.replace(/^[-•*]\s*/, '').trim()).filter(Boolean).slice(0, maxItems);
 
 /** No site (or the crawl failed): build from the founder's own description. */
-export async function buildFromDescription(_: unknown, form: FormData): Promise<{ error?: string }> {
+export async function buildFromDescription(_: unknown, form: FormData): Promise<FormState> {
   const wsId = str(form.get('ws'));
   const { sb } = await requireWorkspace(wsId);
   const description = str(form.get('description'), 3000);
-  if (description.length < 30) return { error: 'Tell us a bit more: what it does and who it’s for (a few sentences).' };
+  if (description.length < 30) return fail(form, 'Tell us a bit more: what it does and who it’s for (a few sentences).');
   await sb.from('brand_brains').update({ description, status: 'building', error: null }).eq('workspace_id', wsId);
   await enqueue(sb, wsId, 'brand.build', {}, `brand:${wsId}:${Date.now()}`);
   revalidatePath(`/app/setup/${wsId}`);
@@ -247,13 +260,13 @@ export async function rebuildBrand(form: FormData) {
   revalidatePath(`/app/${wsId}`, 'layout');
 }
 
-export async function saveBrand(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function saveBrand(_: unknown, form: FormData): Promise<FormState> {
   const wsId = str(form.get('ws'));
   const { sb } = await requireWorkspace(wsId);
   const confirm = form.get('confirm') === '1';
   const now = new Date().toISOString();
   const one_liner = str(form.get('one_liner'), 160);
-  if (!one_liner) return { error: 'Add a one-line description.' };
+  if (!one_liner) return fail(form, 'Add a one-line description.');
   const { error } = await sb.from('brand_brains').update({
     one_liner,
     target_customer: str(form.get('target_customer'), 600),
@@ -265,7 +278,7 @@ export async function saveBrand(_: unknown, form: FormData): Promise<{ ok?: bool
     ...(confirm ? { confirmed_at: now } : {}),
   }).eq('workspace_id', wsId);
   await sb.from('voice_profiles').update({ tone: str(form.get('tone'), 120), updated_at: now }).eq('workspace_id', wsId);
-  if (error) return { error: 'Couldn’t save. Try again.' };
+  if (error) return fail(form, 'Couldn’t save. Try again.');
   revalidatePath(`/app/${wsId}`, 'layout');
   if (confirm) redirect(`/app/${wsId}/inbox`);
   return { ok: true };
@@ -355,12 +368,12 @@ export async function setDirectory(form: FormData) {
 
 const slugify = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
 
-export async function savePage(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function savePage(_: unknown, form: FormData): Promise<FormState> {
   const wsId = str(form.get('ws'));
   const { sb, ws } = await requireWorkspace(wsId);
   const slug = slugify(str(form.get('slug'), 60) || ws.product_name);
-  if (slug.length < 3) return { error: 'The page address needs at least 3 letters or numbers.' };
-  if (slug === 'shipitloud') return { error: 'That address is taken.' };
+  if (slug.length < 3) return fail(form, 'The page address needs at least 3 letters or numbers.');
+  if (slug === 'shipitloud') return fail(form, 'That address is taken.');
   const publish = form.get('publish') === 'on';
   const row = {
     workspace_id: wsId, slug,
@@ -375,7 +388,7 @@ export async function savePage(_: unknown, form: FormData): Promise<{ ok?: boole
   const res = existing
     ? await sb.from('waitlist_pages').update({ ...row, published_at }).eq('id', existing.id)
     : await sb.from('waitlist_pages').insert({ ...row, published_at });
-  if (res.error) return { error: res.error.code === '23505' ? 'That address is taken. Try another.' : 'Couldn’t save. Try again.' };
+  if (res.error) return fail(form, res.error.code === '23505' ? 'That address is taken. Try another.' : 'Couldn’t save. Try again.');
   revalidatePath(`/app/${wsId}/waitlist`);
   return { ok: true };
 }
@@ -384,7 +397,7 @@ export async function savePage(_: unknown, form: FormData): Promise<{ ok?: boole
 const LISTEN_SOURCES = ['hn', 'bluesky', 'github', 'rss', 'producthunt', 'x'] as const;
 
 /** Save what to listen for. The first start also looks back 30 days for warm leads. */
-export async function saveListening(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function saveListening(_: unknown, form: FormData): Promise<FormState> {
   const wsId = str(form.get('ws'));
   const { sb } = await requireWorkspace(wsId);
   const keywords = lines(form.get('keywords'), 10).map((k) => k.slice(0, 60));
@@ -394,16 +407,16 @@ export async function saveListening(_: unknown, form: FormData): Promise<{ ok?: 
   const rss_feeds = feeds.map((f) => normalizeUrl(f)).filter((f): f is string => !!f);
   const sources = form.getAll('sources').map(String).filter((s): s is (typeof LISTEN_SOURCES)[number] => (LISTEN_SOURCES as readonly string[]).includes(s));
   const threshold = Math.max(30, Math.min(95, Number(form.get('threshold')) || 60));
-  if (!keywords.length && !competitors.length) return { error: 'Add at least one phrase to listen for.' };
-  if (!sources.length) return { error: 'Pick at least one place to listen.' };
-  if (feeds.length !== rss_feeds.length) return { error: 'One of the feed links doesn’t look right.' };
-  if (sources.includes('rss') && !rss_feeds.length) return { error: 'Add a feed link, or untick RSS.' };
+  if (!keywords.length && !competitors.length) return fail(form, 'Add at least one phrase to listen for.');
+  if (!sources.length) return fail(form, 'Pick at least one place to listen.');
+  if (feeds.length !== rss_feeds.length) return fail(form, 'One of the feed links doesn’t look right.');
+  if (sources.includes('rss') && !rss_feeds.length) return fail(form, 'Add a feed link, or untick RSS.');
 
   const { data: before } = await sb.from('listen_configs').select('backfilled_at').eq('workspace_id', wsId).maybeSingle();
   const start = form.get('start') === '1';
   const row = { workspace_id: wsId, keywords, competitors, exclude, rss_feeds, sources, threshold, updated_at: new Date().toISOString(), ...(start ? { active: true } : {}) };
   const { error } = await sb.from('listen_configs').upsert(row, { onConflict: 'workspace_id' });
-  if (error) return { error: 'Couldn’t save. Try again.' };
+  if (error) return fail(form, 'Couldn’t save. Try again.');
   if (start && !before?.backfilled_at) await enqueue(sb, wsId, 'listen.poll', { backfill: true }, `backfill:${wsId}`);
   revalidatePath(`/app/${wsId}/listening`);
   return { ok: true };
@@ -451,9 +464,9 @@ export async function createExtensionToken(_: unknown, form: FormData): Promise<
   const token = newToken();
   const admin = supabaseAdmin();
   const { count } = await admin.from('extension_tokens').select('id', { count: 'exact', head: true }).eq('workspace_id', wsId).is('revoked_at', null);
-  if ((count ?? 0) >= 5) return { error: 'You have 5 connections already. Remove one first.' };
+  if ((count ?? 0) >= 5) return fail(form, 'You have 5 connections already. Remove one first.');
   const { error } = await admin.from('extension_tokens').insert({ workspace_id: wsId, user_id: user.id, token_hash: hashToken(token), label: str(form.get('label'), 40) || 'Chrome' });
-  if (error) return { error: 'Couldn’t create a connection. Try again.' };
+  if (error) return fail(form, 'Couldn’t create a connection. Try again.');
   revalidatePath(`/app/${wsId}/settings`);
   return { token };
 }
@@ -492,16 +505,16 @@ export async function repurposePost(form: FormData) {
   revalidatePath(`/app/${wsId}/content`);
 }
 
-export async function saveContentSources(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function saveContentSources(_: unknown, form: FormData): Promise<FormState> {
   const wsId = str(form.get('ws'));
   const { sb } = await requireWorkspace(wsId);
   const rawFeed = str(form.get('changelog_url'), 300);
   const feed = rawFeed ? normalizeUrl(rawFeed) : null;
-  if (rawFeed && !feed) return { error: 'That feed link doesn’t look right.' };
+  if (rawFeed && !feed) return fail(form, 'That feed link doesn’t look right.');
   const repo = str(form.get('github_repo'), 120).replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$|\/$/g, '');
-  if (repo && !/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'Use the owner/name form, like vercel/next.js.' };
+  if (repo && !/^[\w.-]+\/[\w.-]+$/.test(repo)) return fail(form, 'Use the owner/name form, like vercel/next.js.');
   const { error } = await sb.from('content_sources').upsert({ workspace_id: wsId, changelog_url: feed, github_repo: repo || null, weekly_plan: form.get('weekly_plan') === 'on', updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
-  if (error) return { error: 'Couldn’t save. Try again.' };
+  if (error) return fail(form, 'Couldn’t save. Try again.');
   if (feed || repo) await enqueue(sb, wsId, 'content.check_updates', {}, `updates:${wsId}:${Date.now()}`);
   revalidatePath(`/app/${wsId}/content`);
   return { ok: true };
@@ -521,30 +534,30 @@ export async function createWebhookSecret(_: unknown, form: FormData): Promise<{
   const { randomBytes } = await import('node:crypto');
   const secret = randomBytes(24).toString('hex');
   const { error } = await supabaseAdmin().from('content_sources').upsert({ workspace_id: wsId, webhook_secret: secret, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
-  if (error) return { error: 'Couldn’t create it. Try again.' };
+  if (error) return fail(form, 'Couldn’t create it. Try again.');
   return { secret };
 }
 
-export async function addManualUpdate(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function addManualUpdate(_: unknown, form: FormData): Promise<FormState> {
   const wsId = str(form.get('ws'));
   const { sb } = await requireWorkspace(wsId);
   const title = str(form.get('title'), 200);
-  if (title.length < 4) return { error: 'Say what you shipped in a few words.' };
+  if (title.length < 4) return fail(form, 'Say what you shipped in a few words.');
   const { data, error } = await sb.from('product_updates').insert({ workspace_id: wsId, source: 'manual', external_id: `manual:${Date.now()}`, title, body: str(form.get('body'), 2000) || null, published_at: new Date().toISOString() }).select('id').single();
-  if (error || !data) return { error: 'Couldn’t save. Try again.' };
+  if (error || !data) return fail(form, 'Couldn’t save. Try again.');
   await enqueue(sb, wsId, 'content.update_posts', { update_id: data.id }, `update:${data.id}`);
   revalidatePath(`/app/${wsId}/content`);
   return { ok: true };
 }
 
 /** Save the founder's own posts (separated by a line with ---) and learn the voice from them. */
-export async function saveVoiceSamples(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function saveVoiceSamples(_: unknown, form: FormData): Promise<FormState> {
   const wsId = str(form.get('ws'));
   const { sb } = await requireWorkspace(wsId);
   const samples = str(form.get('samples'), 20_000).split(/\n\s*-{3,}\s*\n/).map((s) => s.trim()).filter((s) => s.length >= 20).slice(0, 12);
-  if (samples.length < 2) return { error: 'Paste at least two of your posts, with a line of --- between them.' };
+  if (samples.length < 2) return fail(form, 'Paste at least two of your posts, with a line of --- between them.');
   const { error } = await sb.from('voice_profiles').update({ sample_posts: samples, updated_at: new Date().toISOString() }).eq('workspace_id', wsId);
-  if (error) return { error: 'Couldn’t save. Try again.' };
+  if (error) return fail(form, 'Couldn’t save. Try again.');
   await enqueue(sb, wsId, 'content.voice', {}, `voice:${wsId}:${Date.now()}`);
   revalidatePath(`/app/${wsId}/content`);
   return { ok: true };
@@ -553,17 +566,17 @@ export async function saveVoiceSamples(_: unknown, form: FormData): Promise<{ ok
 // ---------------------------------------------------------------- SEO blog
 const BLOG_SLUG = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 
-export async function saveBlog(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function saveBlog(_: unknown, form: FormData): Promise<FormState> {
   const wsId = str(form.get('ws'));
   const { sb } = await requireWorkspace(wsId);
   const slug = str(form.get('slug'), 40).toLowerCase();
   const title = str(form.get('title'), 80);
-  if (!BLOG_SLUG.test(slug)) return { error: 'Use 3 to 40 lowercase letters, numbers or dashes.' };
-  if (!title) return { error: 'Give the blog a title.' };
+  if (!BLOG_SLUG.test(slug)) return fail(form, 'Use 3 to 40 lowercase letters, numbers or dashes.');
+  if (!title) return fail(form, 'Give the blog a title.');
   const { data: taken } = await supabaseAdmin().from('blogs').select('workspace_id').eq('slug', slug).maybeSingle();
-  if (taken && taken.workspace_id !== wsId) return { error: 'That address is taken. Try another.' };
+  if (taken && taken.workspace_id !== wsId) return fail(form, 'That address is taken. Try another.');
   const { error } = await sb.from('blogs').upsert({ workspace_id: wsId, slug, title, description: str(form.get('description'), 200) || null, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
-  if (error) return { error: 'Couldn’t save. Try again.' };
+  if (error) return fail(form, 'Couldn’t save. Try again.');
   revalidatePath(`/app/${wsId}/blog`);
   return { ok: true };
 }
@@ -575,14 +588,14 @@ export async function findKeywordIdeas(form: FormData) {
   revalidatePath(`/app/${wsId}/blog`);
 }
 
-export async function addKeyword(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function addKeyword(_: unknown, form: FormData): Promise<FormState> {
   const wsId = str(form.get('ws'));
   const { sb } = await requireWorkspace(wsId);
   const keyword = str(form.get('keyword'), 120).toLowerCase().replace(/\s+/g, ' ');
-  if (keyword.split(' ').length < 2) return { error: 'Use the words people would type into Google, like "invoice app for freelancers".' };
+  if (keyword.split(' ').length < 2) return fail(form, 'Use the words people would type into Google, like "invoice app for freelancers".');
   const kind = /^best\b/.test(keyword) ? 'best' : /\balternatives?\b/.test(keyword) ? 'alternative' : /\bvs\.?\b|\bversus\b/.test(keyword) ? 'versus' : /^how\b/.test(keyword) ? 'howto' : /\?$|^(what|why|when|which|can|is|does)\b/.test(keyword) ? 'question' : 'usecase';
   const { error } = await sb.from('seo_keywords').insert({ workspace_id: wsId, keyword, kind, source: 'manual', priority: 70 });
-  if (error) return { error: error.code === '23505' ? 'You already have that one.' : 'Couldn’t save. Try again.' };
+  if (error) return fail(form, error.code === '23505' ? 'You already have that one.' : 'Couldn’t save. Try again.');
   revalidatePath(`/app/${wsId}/blog`);
   return { ok: true };
 }
@@ -606,21 +619,21 @@ export async function skipKeyword(form: FormData) {
 }
 
 /** Edit an article. The SEO score is recomputed and the inbox summary kept in sync. */
-export async function saveArticle(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+export async function saveArticle(_: unknown, form: FormData): Promise<FormState> {
   const wsId = str(form.get('ws'));
   const { sb } = await requireWorkspace(wsId);
   const id = str(form.get('post'));
   const { data: post } = await sb.from('blog_posts').select('id, keyword, slug, faq, asset_id, excerpt').eq('id', id).eq('workspace_id', wsId).maybeSingle();
-  if (!post) return { error: 'Article not found.' };
+  if (!post) return fail(form, 'Article not found.');
   const title = str(form.get('title'), 140);
   const body = typeof form.get('body') === 'string' ? String(form.get('body')).slice(0, 60_000) : '';
   const meta = { title: str(form.get('meta_title'), 90), description: str(form.get('meta_description'), 200) };
-  if (!title || body.trim().length < 200) return { error: 'The article needs a title and some content.' };
+  if (!title || body.trim().length < 200) return fail(form, 'The article needs a title and some content.');
   const { seoScore } = await import('@shipitloud/engine');
   const { data: brain } = await sb.from('brand_brains').select('competitors').eq('workspace_id', wsId).maybeSingle();
   const seo = seoScore({ keyword: post.keyword, title, slug: post.slug, metaTitle: meta.title, metaDescription: meta.description, body, faq: post.faq as { q: string; a: string }[], competitors: brain?.competitors ?? [] });
   const { error } = await sb.from('blog_posts').update({ title, body, meta, seo_score: seo.score, seo_tips: seo.tips, updated_at: new Date().toISOString() }).eq('id', id);
-  if (error) return { error: 'Couldn’t save. Try again.' };
+  if (error) return fail(form, 'Couldn’t save. Try again.');
   if (post.asset_id) {
     const { data: a } = await sb.from('assets').select('content, flags').eq('id', post.asset_id).maybeSingle();
     // Facts to check are cleared once the founder has removed every [verify] mark.
@@ -670,11 +683,11 @@ export async function makeUgc(form: FormData) {
 
 // ---------------------------------------------------------------- tracking
 /** A tracked short link for anywhere the founder shares their product (bio, newsletter, a talk). */
-export async function makeShortLink(_: unknown, form: FormData): Promise<{ link?: string; error?: string }> {
+export async function makeShortLink(_: unknown, form: FormData): Promise<FormState & { link?: string }> {
   const wsId = str(form.get('ws'));
   const { sb, ws } = await requireWorkspace(wsId);
   const target = normalizeUrl(str(form.get('target'), 500) || ws.url || '');
-  if (!target) return { error: 'Add the page the link should open.' };
+  if (!target) return fail(form, 'Add the page the link should open.');
   const source = str(form.get('source'), 40).toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'other';
   const campaign = str(form.get('campaign'), 60).toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-|-$/g, '') || null;
   const { createShortLink } = await import('@shipitloud/engine');
@@ -684,7 +697,7 @@ export async function makeShortLink(_: unknown, form: FormData): Promise<{ link?
     const { site } = await import('@/lib/site');
     return { link: `${site.url}/l/${code}` };
   } catch {
-    return { error: 'Couldn’t create the link. Try again.' };
+    return fail(form, 'Couldn’t create the link. Try again.');
   }
 }
 
@@ -693,4 +706,36 @@ export async function deleteShortLink(form: FormData) {
   const { sb } = await requireWorkspace(wsId);
   await sb.from('short_links').delete().eq('id', str(form.get('id'))).eq('workspace_id', wsId);
   revalidatePath(`/app/${wsId}/analytics`);
+}
+
+// ---------------------------------------------------------------- waitlist emails
+export async function saveEmailSettings(_: unknown, form: FormData): Promise<FormState> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const replyTo = str(form.get('reply_to'), 120);
+  if (replyTo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyTo)) return fail(form, 'The reply-to address doesn’t look right.');
+  const address = str(form.get('business_address'), 300);
+  const on = form.get('sequence_on') === 'on';
+  if (on && address.length < 10) return fail(form, 'Add your business address first. The law requires it in marketing emails (it can be a PO box or registered agent).');
+  const { error } = await sb.from('email_settings').upsert({ workspace_id: wsId, from_name: str(form.get('from_name'), 60) || null, reply_to: replyTo || null, business_address: address || null, sequence_on: on, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
+  if (error) return fail(form, 'Couldn’t save. Try again.');
+  revalidatePath(`/app/${wsId}/waitlist`);
+  return { ok: true };
+}
+
+export async function draftSequence(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'email.draft_sequence', {}, `seqdraft:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/waitlist`);
+}
+
+export async function draftBroadcastEmail(_: unknown, form: FormData): Promise<FormState> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const topic = str(form.get('topic'), 300);
+  if (topic.length < 8) return fail(form, 'Say in a line what the email is about.');
+  await enqueue(sb, wsId, 'email.draft_broadcast', { topic }, `bcast:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/waitlist`);
+  return { ok: true };
 }

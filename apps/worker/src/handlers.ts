@@ -11,6 +11,7 @@ import { pollWorkspace } from './listen.ts';
 import { findKeywords, writeArticle } from './blog.ts';
 import { findNicheFormats, makeCarousel, makeUgcVideo } from './ugc.ts';
 import { licenceProblems } from './footage.ts';
+import { draftBroadcast, draftWaitlistEmails, runSequence } from './emails.ts';
 import { checkUpdates, learnVoice, makeContentWeek, postFromFormat, postsForUpdate, repurpose } from './content.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
@@ -173,6 +174,22 @@ export const handlers: Record<string, Handler> = {
     await planLimitNotice(ws, () => makeCarousel(ws, String(p.format_id), typeof p.topic === 'string' ? p.topic.slice(0, 300) : ''));
   },
 
+  /** Waitlist emails: draft the sequence or a broadcast; send the sequence on schedule. */
+  async 'email.draft_sequence'(_p, job) {
+    const ws = job.workspace_id!;
+    await planLimitNotice(ws, async () => {
+      const n = await draftWaitlistEmails(ws);
+      await notifyOwner(ws, 'content_ready', `${n} waitlist emails to review`, 'Approve them and they go out on their own: welcome, nudge, countdown and launch day.', `${appUrl()}/app/${ws}/inbox`);
+    });
+  },
+  async 'email.draft_broadcast'(p, job) {
+    await planLimitNotice(job.workspace_id!, () => draftBroadcast(job.workspace_id!, String(p.topic ?? '').slice(0, 300)));
+  },
+  async 'email.sequence'(_p, job) {
+    const r = await runSequence(job.workspace_id!);
+    if (r.sent) console.log(`[email] ${job.workspace_id} sequence: ${r.sent} emails`);
+  },
+
   async 'kit.readiness'(_p, job) {
     const ws = job.workspace_id!;
     const { data } = await db.from('workspaces').select('url').eq('id', ws).single();
@@ -221,6 +238,11 @@ export const handlers: Record<string, Handler> = {
   async 'asset.decided'(p) {
     const a = await loadAsset(p.asset_id);
     if (!['approved', 'auto_approved'].includes(a.status)) return;
+    // Waitlist sequence emails are templates: approving one switches it on; the sequence runner sends it.
+    if (a.type === 'email' && (a.content as { sequence?: boolean }).sequence) {
+      await db.from('email_settings').upsert({ workspace_id: a.workspace_id, sequence_on: true }, { onConflict: 'workspace_id', ignoreDuplicates: true });
+      return;
+    }
     const times = [Date.now(), a.scheduled_for ? Date.parse(a.scheduled_for) : 0, a.status === 'auto_approved' && a.undo_until ? Date.parse(a.undo_until) + 1000 : 0];
     await enqueue(a.workspace_id, 'asset.publish', { asset_id: a.id }, { runAt: new Date(Math.max(...times)), key: `publish:${a.id}` });
   },
@@ -308,6 +330,11 @@ export async function tick() {
       await enqueue(c.workspace_id, 'content.week', {}, { key: `week:${c.workspace_id}:${now.toISOString().slice(0, 10)}` });
     }
   }
+
+  // Waitlist sequence: check every 10 minutes for workspaces that switched it on.
+  const tenMin = Math.floor(now.getTime() / 600_000);
+  const seq = check(await db.from('email_settings').select('workspace_id').eq('sequence_on', true), 'sequences') as { workspace_id: string }[];
+  for (const s of seq) await enqueue(s.workspace_id, 'email.sequence', {}, { key: `seq:${s.workspace_id}:${tenMin}` });
 
   // Expire pending items whose moment has passed.
   check(await db.from('assets').update({ status: 'expired' }).eq('status', 'pending').lt('expires_at', now.toISOString()), 'expire');
