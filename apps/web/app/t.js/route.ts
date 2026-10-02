@@ -2,7 +2,8 @@
 //   <script src="https://<app>/t.js" data-key="<tracking key>" defer></script>
 // It remembers where a visitor first came from (in their own browser, no cookies), counts page views, and counts
 // signups when the site calls shipitloud('signup') or a form with data-shipitloud="signup" is submitted.
-// It never reads form fields, emails or anything personal.
+// In the founder's app, shipitloud('identify', userId) links events to their own (opaque) user id, so we can see
+// who signed up but didn't activate; shipitloud('reset') on log out. It never reads form fields or emails.
 const SNIPPET = `(function () {
   var s = document.currentScript; if (!s) return;
   var key = s.getAttribute('data-key'); if (!key) return;
@@ -18,12 +19,16 @@ const SNIPPET = `(function () {
   var quiet = navigator.globalPrivacyControl === true || navigator.doNotTrack === '1';
   function send(type, name) {
     if (quiet && type === 'pageview') return;
-    var body = JSON.stringify({ key: key, type: type, name: name || null, visitor: vid, path: location.pathname, referrer: document.referrer ? (function () { try { return new URL(document.referrer).hostname; } catch (e) { return null; } })() : null, source: t.source, medium: t.medium, campaign: t.campaign, ref: t.ref });
+    var body = JSON.stringify({ key: key, type: type, name: name || null, visitor: vid, user: store.get('sil_uid'), path: location.pathname, referrer: document.referrer ? (function () { try { return new URL(document.referrer).hostname; } catch (e) { return null; } })() : null, source: t.source, medium: t.medium, campaign: t.campaign, ref: t.ref });
     if (navigator.sendBeacon && navigator.sendBeacon(api, new Blob([body], { type: 'text/plain' }))) return;
     try { fetch(api, { method: 'POST', body: body, keepalive: true, mode: 'no-cors', headers: { 'content-type': 'text/plain' } }); } catch (e) {}
   }
   var queued = (window.shipitloud && window.shipitloud.q) || [];
-  window.shipitloud = function (event) { if (event === 'signup') send('signup'); else if (event) send('custom', String(event).slice(0, 40)); };
+  window.shipitloud = function (event, id) {
+    if (event === 'identify') { if (id && String(id).indexOf('@') < 0) { store.set('sil_uid', String(id).slice(0, 120)); send('custom', 'identify'); } return; }
+    if (event === 'reset') { try { localStorage.removeItem('sil_uid'); } catch (e) {} return; }
+    if (event === 'signup') send('signup'); else if (event) send('custom', String(event).slice(0, 40));
+  };
   for (var i = 0; i < queued.length; i++) window.shipitloud.apply(null, queued[i]);
   document.addEventListener('submit', function (e) { var f = e.target; if (f && f.getAttribute && f.getAttribute('data-shipitloud') === 'signup') send('signup'); }, true);
   send('pageview');

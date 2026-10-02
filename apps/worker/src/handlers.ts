@@ -14,6 +14,7 @@ import { licenceProblems } from './footage.ts';
 import { draftBroadcast, draftWaitlistEmails, runSequence } from './emails.ts';
 import { buildDigest, dueDigests } from './digests.ts';
 import { auditLandingPage, draftNetworkKit } from './conversion.ts';
+import { checkChurn, draftLifecycleEmails, runLifecycle } from './lifecycle.ts';
 import { checkUpdates, learnVoice, makeContentWeek, postFromFormat, postsForUpdate, repurpose } from './content.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
@@ -192,6 +193,22 @@ export const handlers: Record<string, Handler> = {
     if (r.sent) console.log(`[email] ${job.workspace_id} sequence: ${r.sent} emails`);
   },
 
+  /** Signup-to-paid: draft the onboarding emails, send what's due, check paying users for churn. */
+  async 'lifecycle.draft'(_p, job) {
+    const ws = job.workspace_id!;
+    await planLimitNotice(ws, async () => {
+      await draftLifecycleEmails(ws);
+      await notifyOwner(ws, 'content_ready', '4 onboarding emails to review', 'Approve them and they go to your users when each is due: welcome, activation nudge, trial ending, upgrade.', `${appUrl()}/app/${ws}/inbox`);
+    });
+  },
+  async 'lifecycle.run'(_p, job) {
+    const r = await runLifecycle(job.workspace_id!);
+    if (r.sent) console.log(`[lifecycle] ${job.workspace_id}: ${r.sent} emails`);
+  },
+  async 'lifecycle.churn'(_p, job) {
+    await planLimitNotice(job.workspace_id!, () => checkChurn(job.workspace_id!));
+  },
+
   /** Landing page audit: the top fix for clarity, call to action and trust. */
   async 'kit.audit'(_p, job) {
     const ws = job.workspace_id!;
@@ -257,6 +274,11 @@ export const handlers: Record<string, Handler> = {
     // Waitlist sequence emails are templates: approving one switches it on; the sequence runner sends it.
     if (a.type === 'email' && (a.content as { sequence?: boolean }).sequence) {
       await db.from('email_settings').upsert({ workspace_id: a.workspace_id, sequence_on: true }, { onConflict: 'workspace_id', ignoreDuplicates: true });
+      return;
+    }
+    // Lifecycle emails too: approving one switches lifecycle emails on (unless the founder turned them off).
+    if (a.type === 'email' && (a.content as { lifecycle?: boolean }).lifecycle) {
+      await db.from('lifecycle_settings').upsert({ workspace_id: a.workspace_id, emails_on: true }, { onConflict: 'workspace_id', ignoreDuplicates: true });
       return;
     }
     const times = [Date.now(), a.scheduled_for ? Date.parse(a.scheduled_for) : 0, a.status === 'auto_approved' && a.undo_until ? Date.parse(a.undo_until) + 1000 : 0];
@@ -352,6 +374,16 @@ export async function tick() {
     // Autopilot: plan next week on Sunday evening (UTC), at most once every 5 days.
     if (c.weekly_plan && now.getUTCDay() === 0 && now.getUTCHours() >= 17 && (!c.last_planned_at || now.getTime() - Date.parse(c.last_planned_at) > 5 * 86_400_000)) {
       await enqueue(c.workspace_id, 'content.week', {}, { key: `week:${c.workspace_id}:${now.toISOString().slice(0, 10)}` });
+    }
+  }
+
+  // Lifecycle emails every 10 minutes where they're on; churn check once a day where there are paying users.
+  const life = check(await db.from('lifecycle_settings').select('workspace_id, emails_on, churn_alerts, last_churn_check'), 'lifecycle') as { workspace_id: string; emails_on: boolean; churn_alerts: boolean; last_churn_check: string | null }[];
+  const lifeSlot = Math.floor(now.getTime() / 600_000);
+  for (const l of life) {
+    if (l.emails_on) await enqueue(l.workspace_id, 'lifecycle.run', {}, { key: `life:${l.workspace_id}:${lifeSlot}` });
+    if (l.churn_alerts && (!l.last_churn_check || now.getTime() - Date.parse(l.last_churn_check) > 23 * 3600_000)) {
+      await enqueue(l.workspace_id, 'lifecycle.churn', {}, { key: `churn:${l.workspace_id}:${now.toISOString().slice(0, 10)}` });
     }
   }
 

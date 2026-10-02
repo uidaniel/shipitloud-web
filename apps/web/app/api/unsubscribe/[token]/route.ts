@@ -6,7 +6,11 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const id = readUnsubscribeToken((await params).token);
   if (!id) return new NextResponse('Invalid link', { status: 400 });
-  await supabaseAdmin().from('waitlist_signups').update({ unsubscribed_at: new Date().toISOString() }).eq('id', id).is('unsubscribed_at', null);
+  const at = new Date().toISOString();
+  const db = supabaseAdmin();
+  // The id is a waitlist signup or one of the founder's own users.
+  await db.from('waitlist_signups').update({ unsubscribed_at: at }).eq('id', id).is('unsubscribed_at', null);
+  await db.from('end_users').update({ unsubscribed_at: at }).eq('id', id).is('unsubscribed_at', null);
   return new NextResponse('Unsubscribed', { status: 200 });
 }
 

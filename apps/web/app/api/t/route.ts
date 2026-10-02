@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { rateLimited } from '@/lib/waitlist/guard';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { recordTrack } from '@shipitloud/engine';
 
 // Events from the tracking snippet on founders' sites. Any origin may send; the key decides the workspace.
 // Nothing personal is stored: a random visitor id from the visitor's own browser, the page path and the channel.
@@ -46,6 +47,23 @@ export async function POST(req: NextRequest) {
     const since = new Date(Date.now() - 86_400_000).toISOString();
     const { count } = await db.from('track_events').select('id', { count: 'exact', head: true }).eq('workspace_id', ws).eq('type', 'signup').eq('visitor', visitor).gte('created_at', since);
     if (count) return ok();
+  }
+  // A signed-in user on the founder's app (shipitloud('identify', id)): an opaque id only, never an email. Lets us
+  // spot users who signed up but didn't activate. Visits count at most once an hour; email, plan and paid status
+  // only come from the founder's server.
+  const user = clip(b.user, 120);
+  if (user && !user.includes('@')) {
+    const name = type === 'custom' ? clip(b.name, 40) : null;
+    const event = name === 'identify' ? null : name ?? (type === 'signup' ? 'signup' : null);
+    try {
+      if (event || type === 'signup' || name === 'identify') await recordTrack(db, ws, { user: { id: user }, event, at: null }, { browser: true });
+      else {
+        const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
+        const { data: seen } = await db.from('end_users').update({ last_seen_at: new Date().toISOString() }).eq('workspace_id', ws).eq('external_id', user).or(`last_seen_at.is.null,last_seen_at.lt.${hourAgo}`).select('id');
+        if (seen?.[0]) await db.from('user_events').insert({ workspace_id: ws, end_user_id: seen[0].id, event: 'visit' });
+      }
+    } catch { /* tracking must never break the founder's site */ }
+    if (name === 'identify') return ok();
   }
   await db.from('track_events').insert({
     workspace_id: ws, type, name: type === 'custom' ? clip(b.name, 40) : null, visitor, source, medium, campaign, ref_code: ref,

@@ -71,10 +71,10 @@ export async function draftBroadcast(workspaceId: string, topic: string) {
 }
 
 // ---------------------------------------------------------------- sending
-interface Ctx { workspaceId: string; product: string; productUrl: string | null; slug: string | null; settings: { from_name: string | null; reply_to: string | null; business_address: string; sending_domain: string | null; domain_verified: boolean }; theme: { accent: string; onAccent: string } }
+export interface Ctx { workspaceId: string; product: string; productUrl: string | null; slug: string | null; settings: { from_name: string | null; reply_to: string | null; business_address: string; sending_domain: string | null; domain_verified: boolean }; theme: { accent: string; onAccent: string } }
 interface Signup { id: string; email: string; referral_code: string; position: number; referral_count: number; created_at: string; unsubscribed_at: string | null }
 
-async function context(workspaceId: string): Promise<Ctx | { problem: string }> {
+export async function context(workspaceId: string): Promise<Ctx | { problem: string }> {
   const [{ data: ws }, { data: st }, { data: page }, { data: kit }] = await Promise.all([
     db.from('workspaces').select('product_name, url, kill_switch').eq('id', workspaceId).single(),
     db.from('email_settings').select('from_name, reply_to, business_address, sending_domain, domain_verified').eq('workspace_id', workspaceId).maybeSingle(),
@@ -153,6 +153,7 @@ registerProvider({
   automatic: true,
   internal: true,
   async execute(payload) {
+    if (payload.kind === 'winback') return (await import('./lifecycle.ts')).sendWinback(payload);
     if (payload.kind !== 'broadcast') return { copyAndPost: { text: String(payload.text ?? ''), openUrl: 'mailto:' } };
     const workspaceId = String(payload.workspace_id ?? '');
     const ctx = await context(workspaceId);

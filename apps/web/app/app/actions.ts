@@ -778,3 +778,53 @@ export async function draftLaunchEmail(form: FormData) {
   await enqueue(sb, wsId, 'email.draft_broadcast', { topic: 'We just launched: it is live today, and here is how to start' }, `launchmail:${wsId}:${Date.now()}`);
   revalidatePath(`/app/${wsId}/kit`);
 }
+
+// ---------------------------------------------------------------- customers: signup-to-paid, churn alerts
+export async function createApiKey(_: unknown, form: FormData): Promise<FormState & { key?: string }> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const { count } = await sb.from('api_keys').select('id', { count: 'exact', head: true }).eq('workspace_id', wsId).is('revoked_at', null);
+  if ((count ?? 0) >= 5) return fail(form, 'You have 5 active keys. Revoke one you no longer use first.');
+  const { newApiKey } = await import('@shipitloud/engine');
+  const k = newApiKey();
+  // Ownership was checked above; the row is written with the service key so only the hash ever touches the table.
+  const { error } = await supabaseAdmin().from('api_keys').insert({ workspace_id: wsId, prefix: k.prefix, hash: k.hash });
+  if (error) return fail(form, 'Couldn’t create a key. Try again.');
+  revalidatePath(`/app/${wsId}/customers`);
+  return { ok: true, key: k.key };
+}
+
+export async function revokeApiKey(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await sb.from('api_keys').update({ revoked_at: new Date().toISOString() }).eq('workspace_id', wsId).eq('id', str(form.get('id'), 40));
+  revalidatePath(`/app/${wsId}/customers`);
+}
+
+export async function saveLifecycle(_: unknown, form: FormData): Promise<FormState> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const event = str(form.get('activation_event'), 40).toLowerCase();
+  if (!/^[\w .:-]{2,40}$/.test(event)) return fail(form, 'Name the event that means a user got value, like "activated" or "first_invoice".');
+  const rawUpgrade = str(form.get('upgrade_url'), 300);
+  const upgrade = rawUpgrade ? normalizeUrl(rawUpgrade) : null;
+  if (rawUpgrade && !upgrade) return fail(form, 'The upgrade link doesn’t look right.');
+  const on = form.get('emails_on') === 'on';
+  const address = str(form.get('business_address'), 300);
+  if (address) await sb.from('email_settings').upsert({ workspace_id: wsId, business_address: address, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
+  if (on) {
+    const { data: es } = await sb.from('email_settings').select('business_address').eq('workspace_id', wsId).maybeSingle();
+    if ((es?.business_address ?? '').trim().length < 10) return fail(form, 'Add your business address first. The law requires it in these emails (it can be a PO box or registered agent).');
+  }
+  const { error } = await sb.from('lifecycle_settings').upsert({ workspace_id: wsId, activation_event: event, upgrade_url: upgrade, emails_on: on, churn_alerts: form.get('churn_alerts') === 'on', updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
+  if (error) return fail(form, 'Couldn’t save. Try again.');
+  revalidatePath(`/app/${wsId}/customers`);
+  return { ok: true };
+}
+
+export async function draftLifecycle(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'lifecycle.draft', {}, `lifedraft:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/customers`);
+}

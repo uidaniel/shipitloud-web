@@ -9,3 +9,4 @@ export * from './links.ts';
 export * from './email.ts';
 export * from './digest.ts';
 export * from './page-audit.ts';
+export * from './lifecycle.ts';

@@ -25,4 +25,5 @@ export const Icon = {
   shield: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M10 2.8 4.5 5v4.3c0 3.6 2.4 6.3 5.5 7.9 3.1-1.6 5.5-4.3 5.5-7.9V5z" /></svg>,
   arrow: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M4 10h12M11 5l5 5-5 5" /></svg>,
   chat: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M4 15.5 3 18l3.2-1.2A7.5 7.5 0 1 0 4 15.5z" /></svg>,
+  heart: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M10 16.5s-6-3.6-6-8.1A3.4 3.4 0 0 1 10 6.3a3.4 3.4 0 0 1 6 2.1c0 4.5-6 8.1-6 8.1z" /></svg>,
 };
