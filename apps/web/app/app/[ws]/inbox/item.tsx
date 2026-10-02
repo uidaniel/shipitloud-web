@@ -11,7 +11,7 @@ export interface InboxAsset {
   type: string;
   platform: string | null;
   title: string;
-  content: { text?: string; thread_url?: string; slots?: Record<string, string> };
+  content: { text?: string; thread_url?: string; quote?: string; slots?: Record<string, string> };
   file_url?: string | null;
   qa_score?: number | null;
   confidence: number | null;
@@ -24,7 +24,8 @@ export interface InboxAsset {
 const PLATFORM: Record<string, { icon: Platform; name: string }> = {
   x: { icon: 'x', name: 'X' }, linkedin: { icon: 'linkedin', name: 'LinkedIn' }, reddit: { icon: 'reddit', name: 'Reddit' },
   hn: { icon: 'hn', name: 'Hacker News' }, instagram: { icon: 'instagram', name: 'Instagram' }, tiktok: { icon: 'tiktok', name: 'TikTok' },
-  email: { icon: 'email', name: 'Email' },
+  email: { icon: 'email', name: 'Email' }, bluesky: { icon: 'bluesky', name: 'Bluesky' }, github: { icon: 'github', name: 'GitHub' },
+  rss: { icon: 'rss', name: 'RSS' }, producthunt: { icon: 'producthunt', name: 'Product Hunt' }, indiehackers: { icon: 'indiehackers', name: 'Indie Hackers' },
 };
 const TYPE: Record<string, string> = { reply: 'Reply', post: 'Post', poster: 'Poster', video: 'Video', email: 'Email', article: 'Article', ad_creative: 'Ad' };
 
@@ -100,6 +101,7 @@ export function InboxItem({ ws, asset, threshold }: { ws: string; asset: InboxAs
               // eslint-disable-next-line @next/next/no-img-element
               <a href={asset.file_url} target="_blank" rel="noopener noreferrer" className="pr-poster"><img src={asset.file_url} alt={asset.title} loading="lazy" /></a>
             )}
+            {asset.content.quote && <blockquote className="pr-quote">{asset.content.quote}</blockquote>}
             {asset.content.text && <div className="pr-item-body">{asset.content.text}</div>}
           </>
         )}

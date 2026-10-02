@@ -102,7 +102,10 @@ export async function markPosted(form: FormData) {
   const wsId = str(form.get('ws'));
   const assetId = str(form.get('asset'));
   const { sb } = await requireWorkspace(wsId);
-  await sb.from('assets').update({ status: 'published', updated_at: new Date().toISOString() }).eq('id', assetId).eq('workspace_id', wsId).eq('status', 'scheduled');
+  const { data } = await sb.from('assets').update({ status: 'published', updated_at: new Date().toISOString() }).eq('id', assetId).eq('workspace_id', wsId).eq('status', 'scheduled').select('content').maybeSingle();
+  // A posted reply closes its conversation in Listening.
+  const mentionId = (data?.content as { mention_id?: string } | undefined)?.mention_id;
+  if (mentionId) await sb.from('mentions').update({ status: 'replied' }).eq('id', mentionId).eq('workspace_id', wsId);
   revalidatePath(`/app/${wsId}`, 'layout');
 }
 
@@ -341,4 +344,66 @@ export async function savePage(_: unknown, form: FormData): Promise<{ ok?: boole
   if (res.error) return { error: res.error.code === '23505' ? 'That address is taken. Try another.' : 'Couldn’t save. Try again.' };
   revalidatePath(`/app/${wsId}/waitlist`);
   return { ok: true };
+}
+
+// ---------------------------------------------------------------- listening
+const LISTEN_SOURCES = ['hn', 'bluesky', 'github', 'rss', 'producthunt', 'x'] as const;
+
+/** Save what to listen for. The first start also looks back 30 days for warm leads. */
+export async function saveListening(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const keywords = lines(form.get('keywords'), 10).map((k) => k.slice(0, 60));
+  const competitors = lines(form.get('competitors'), 5).map((k) => k.slice(0, 40));
+  const exclude = lines(form.get('exclude'), 20).map((k) => k.slice(0, 40));
+  const feeds = lines(form.get('rss_feeds'), 5);
+  const rss_feeds = feeds.map((f) => normalizeUrl(f)).filter((f): f is string => !!f);
+  const sources = form.getAll('sources').map(String).filter((s): s is (typeof LISTEN_SOURCES)[number] => (LISTEN_SOURCES as readonly string[]).includes(s));
+  const threshold = Math.max(30, Math.min(95, Number(form.get('threshold')) || 60));
+  if (!keywords.length && !competitors.length) return { error: 'Add at least one phrase to listen for.' };
+  if (!sources.length) return { error: 'Pick at least one place to listen.' };
+  if (feeds.length !== rss_feeds.length) return { error: 'One of the feed links doesn’t look right.' };
+  if (sources.includes('rss') && !rss_feeds.length) return { error: 'Add a feed link, or untick RSS.' };
+
+  const { data: before } = await sb.from('listen_configs').select('backfilled_at').eq('workspace_id', wsId).maybeSingle();
+  const start = form.get('start') === '1';
+  const row = { workspace_id: wsId, keywords, competitors, exclude, rss_feeds, sources, threshold, updated_at: new Date().toISOString(), ...(start ? { active: true } : {}) };
+  const { error } = await sb.from('listen_configs').upsert(row, { onConflict: 'workspace_id' });
+  if (error) return { error: 'Couldn’t save. Try again.' };
+  if (start && !before?.backfilled_at) await enqueue(sb, wsId, 'listen.poll', { backfill: true }, `backfill:${wsId}`);
+  revalidatePath(`/app/${wsId}/listening`);
+  return { ok: true };
+}
+
+export async function setListening(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await sb.from('listen_configs').update({ active: form.get('on') === 'true' }).eq('workspace_id', wsId);
+  revalidatePath(`/app/${wsId}/listening`);
+}
+
+export async function listenNow(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'listen.poll', {}, `poll:${wsId}:now:${Math.floor(Date.now() / 60_000)}`);
+  revalidatePath(`/app/${wsId}/listening`);
+}
+
+export async function draftMention(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const id = str(form.get('mention'));
+  const { sb } = await requireWorkspace(wsId);
+  const { data } = await sb.from('mentions').select('id').eq('id', id).eq('workspace_id', wsId).maybeSingle();
+  if (!data) return;
+  await enqueue(sb, wsId, 'listen.draft', { mention_id: id }, `draft:${id}`);
+  revalidatePath(`/app/${wsId}/listening`);
+}
+
+export async function setMentionStatus(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const status = str(form.get('status'));
+  const { sb } = await requireWorkspace(wsId);
+  if (!['new', 'dismissed', 'replied'].includes(status)) return;
+  await sb.from('mentions').update({ status }).eq('id', str(form.get('mention'))).eq('workspace_id', wsId);
+  revalidatePath(`/app/${wsId}/listening`);
 }

@@ -6,6 +6,7 @@ import { makePosters } from './posters.ts';
 import { PlanLimitError, makeLaunchPlan, makeLaunchPosts } from './launch.ts';
 import { runReadiness } from './readiness.ts';
 import { makeDemoVideo } from './video.ts';
+import { draftReply, pollWorkspace } from './listen.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
 
@@ -71,6 +72,32 @@ export const handlers: Record<string, Handler> = {
       await notifyOwner(ws, 'kit_ready', 'Your demo video is ready', 'Three cuts: 9:16, 1:1 and 16:9. Approve it in your inbox.', `${appUrl()}/app/${ws}/kit?tab=video`);
     } catch (err) {
       if (err instanceof PlanLimitError) { await notifyOwner(ws, 'cap_reached', 'Plan limit reached', err.message, `${appUrl()}/pricing`); return; }
+      throw err;
+    }
+  },
+
+  /** Listening: poll sources, score, auto-draft the best. `backfill` looks back 30 days (warm leads). */
+  async 'listen.poll'(p, job) {
+    const ws = job.workspace_id!;
+    try {
+      const r = await pollWorkspace(ws, { backfill: p.backfill === true });
+      console.log(`[listen] ${ws} found ${r.found}, kept ${r.kept}, scored ${r.scored}, drafted ${r.drafted}`);
+      if (p.backfill === true) {
+        await notifyOwner(ws, 'listen_ready', `${r.kept} conversations found from the last 30 days`, r.drafted ? `${r.drafted} replies are drafted and waiting for you.` : 'Open Listening to see them.', `${appUrl()}/app/${ws}/listening`);
+      } else if (r.drafted) {
+        await notifyOwner(ws, 'listen_ready', `${r.drafted} new conversation${r.drafted === 1 ? '' : 's'} worth a reply`, 'Replies are drafted and waiting for your OK.', `${appUrl()}/app/${ws}/inbox`);
+      }
+    } catch (err) {
+      if (err instanceof PlanLimitError) { await db.from('listen_configs').update({ active: false }).eq('workspace_id', ws); await notifyOwner(ws, 'cap_reached', 'Listening paused', err.message, `${appUrl()}/pricing`); return; }
+      throw err;
+    }
+  },
+
+  async 'listen.draft'(p, job) {
+    try {
+      await draftReply(job.workspace_id!, String(p.mention_id));
+    } catch (err) {
+      if (err instanceof PlanLimitError) { await notifyOwner(job.workspace_id!, 'cap_reached', 'Plan limit reached', err.message, `${appUrl()}/pricing`); return; }
       throw err;
     }
   },
@@ -160,6 +187,14 @@ export const handlers: Record<string, Handler> = {
 /** Housekeeping that runs every minute: expiry, reminders, platform-warning fallback. */
 export async function tick() {
   const now = new Date();
+  // Listening: poll each active workspace every 20 minutes. The key makes this idempotent per slot.
+  const slot = Math.floor(now.getTime() / (20 * 60_000));
+  const due = check(await db.from('listen_configs').select('workspace_id, last_polled_at').eq('active', true), 'listen due') as { workspace_id: string; last_polled_at: string | null }[];
+  for (const c of due) {
+    if (c.last_polled_at && now.getTime() - Date.parse(c.last_polled_at) < 19 * 60_000) continue;
+    await enqueue(c.workspace_id, 'listen.poll', {}, { key: `poll:${c.workspace_id}:${slot}` });
+  }
+
   // Expire pending items whose moment has passed.
   check(await db.from('assets').update({ status: 'expired' }).eq('status', 'pending').lt('expires_at', now.toISOString()), 'expire');
 
