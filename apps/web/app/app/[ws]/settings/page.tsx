@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { requireWorkspace } from '@/lib/supabase/server';
-import { AccountForm, AutomationForm, KillSwitch, NotificationsForm, ProductForm } from './forms';
+import { AccountForm, AutomationForm, ExtensionForm, KillSwitch, NotificationsForm, ProductForm } from './forms';
 
 export const metadata: Metadata = { title: 'Settings' };
 
@@ -8,6 +8,7 @@ export default async function Settings({ params }: { params: Promise<{ ws: strin
   const { ws: id } = await params;
   const { sb, user, ws } = await requireWorkspace(id);
   const { data: profile } = await sb.from('profiles').select('notification_prefs').eq('id', user.id).maybeSingle();
+  const { data: tokens } = await sb.from('extension_tokens').select('id, label, last_used_at, created_at').eq('workspace_id', id).is('revoked_at', null).order('created_at');
   const prefs = (profile?.notification_prefs ?? {}) as { email?: boolean; slack?: boolean; slack_webhook?: string };
 
   return (
@@ -16,6 +17,7 @@ export default async function Settings({ params }: { params: Promise<{ ws: strin
       <KillSwitch ws={id} on={ws.kill_switch} />
       <ProductForm ws={id} name={ws.product_name} url={ws.url ?? ''} launchDate={ws.launch_date ?? ''} />
       <NotificationsForm email={prefs.email !== false} slack={!!prefs.slack} webhook={prefs.slack_webhook ?? ''} address={user.email ?? ''} />
+      <ExtensionForm ws={id} tokens={tokens ?? []} />
       <AccountForm email={user.email ?? ''} hasPassword={!!user.user_metadata?.has_password} />
     </div>
   );

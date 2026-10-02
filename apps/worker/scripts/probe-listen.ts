@@ -1,5 +1,5 @@
 // Real searches, no DB, no AI: shows what each source returns and how the free score ranks it.
-import { domainWords, heuristicScore, queriesFor, topicMatch } from '../src/listen.ts';
+import { domainWords, heuristicScore, queriesFor, topicMatch } from '@shipitloud/engine';
 import { searchBluesky, searchGitHub, searchHN, type Found } from '../src/sources.ts';
 
 const preset = process.argv[2] ?? 'balans';

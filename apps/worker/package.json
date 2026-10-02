@@ -7,8 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "once": "tsx src/index.ts --once",
-    "typecheck": "tsc --noEmit -p .",
-    "test": "node --import tsx --test src/listen.test.ts"
+    "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
     "@shipitloud/ai": "*",
@@ -18,7 +17,8 @@
     "@supabase/supabase-js": "^2.117.2",
     "playwright-core": "^1.63.0",
     "tsx": "^4.23.15",
-    "@shipitloud/video": "*"
+    "@shipitloud/video": "*",
+    "@shipitloud/engine": "*"
   },
   "devDependencies": {
     "@types/node": "^22"

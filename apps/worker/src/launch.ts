@@ -3,24 +3,13 @@ import {
   LaunchPlanSchema, LaunchPostsSchema, brandBlock, fastModel, findUnsupportedClaims, generate, launchPlanPrompt, launchPostsPrompt, mockLaunchPlan, mockLaunchPosts,
   type BrandContext,
 } from '@shipitloud/ai';
+import { brandContext as engineBrandContext, PlanLimitError } from '@shipitloud/engine';
 import { aiLedger, check, db, enqueue } from './db.ts';
 
-export class PlanLimitError extends Error {}
+export { PlanLimitError } from '@shipitloud/engine';
 
-export async function brandContext(workspaceId: string): Promise<BrandContext> {
-  const ws = check(await db.from('workspaces').select('product_name, url, launch_date').eq('id', workspaceId).single(), 'ws')!;
-  const [b, v] = await Promise.all([
-    db.from('brand_brains').select('status, one_liner, target_customer, pain_points, competitors, keywords').eq('workspace_id', workspaceId).maybeSingle(),
-    db.from('voice_profiles').select('tone, dos, donts').eq('workspace_id', workspaceId).maybeSingle(),
-  ]);
-  if (b.data?.status !== 'ready') throw new Error('Set up your brand first so everything sounds like you.');
-  return {
-    name: ws.product_name, url: ws.url, launch_date: ws.launch_date,
-    one_liner: b.data.one_liner, target_customer: b.data.target_customer,
-    pain_points: b.data.pain_points ?? [], competitors: b.data.competitors ?? [], keywords: b.data.keywords ?? [],
-    tone: v.data?.tone ?? null, dos: v.data?.dos ?? [], donts: v.data?.donts ?? [],
-  };
-}
+/** The brand as the AI sees it (shared with the web app through the engine). */
+export const brandContext = (workspaceId: string): Promise<BrandContext> => engineBrandContext(db, workspaceId);
 
 async function consume(workspaceId: string, metric: 'ai_drafts' | 'images', amount: number) {
   const { data } = await db.rpc('consume_usage', { p_workspace: workspaceId, p_metric: metric, p_amount: amount, p_cost: 0 });

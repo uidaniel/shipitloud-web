@@ -29,7 +29,7 @@ const config: NextConfig = {
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? '',
     NEXT_PUBLIC_AUTH_GOOGLE: process.env.NEXT_PUBLIC_AUTH_GOOGLE ?? '',
   },
-  transpilePackages: ['@shipitloud/db', '@shipitloud/templates'],
+  transpilePackages: ['@shipitloud/db', '@shipitloud/templates', '@shipitloud/engine', '@shipitloud/ai'],
   // Screenshot uploads for the demo video go through a server action.
   experimental: { serverActions: { bodySizeLimit: '26mb' } },
   async headers() {

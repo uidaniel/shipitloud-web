@@ -1,0 +1,19 @@
+{
+  "name": "@shipitloud/engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "test": "node --import tsx --test src/listening.test.ts src/preflight.test.ts"
+  },
+  "dependencies": {
+    "@shipitloud/ai": "*",
+    "@supabase/supabase-js": "^2.117.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
+}

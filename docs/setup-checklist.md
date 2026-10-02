@@ -26,6 +26,12 @@ Everything below is already built in code. Each item is a dashboard setting, acc
 - [ ] `PRODUCTHUNT_TOKEN` (Product Hunt developer token). It switches on the Product Hunt source.
 - [ ] `X_BEARER_TOKEN`. It switches on X for Scale workspaces, metered by `x_reads`.
 
+## Chrome extension
+- [ ] Build it: `npm run build -w @shipitloud/extension`, which writes `apps/extension/dist`. For local testing against `localhost:3001`, use `build:dev`, then chrome://extensions → Developer mode → Load unpacked.
+- [ ] If the app's production URL changes, update `DEFAULT_API` / `host_permissions` in `apps/extension/build.mjs`.
+- [ ] Chrome Web Store: a developer account ($5 one-time), then upload a zip of `dist/` with the screenshots, the privacy policy URL, and the permission justifications: `storage` holds the connection code, and the host access reads Reddit pages the user opens and calls the ShipItLoud API.
+- [ ] PRD section 17: get a legal review of the extension approach against Reddit's terms before launch.
+
 ## Worker host (VM, Railway or Fly: undecided)
 - [ ] Node 22, then `npm ci`, then `npx playwright install --with-deps chromium`. Remotion downloads its own headless Chrome on first render.
 - [ ] Copy the env vars from `.env.example`. Run `npm start -w @shipitloud/worker` under a process manager.

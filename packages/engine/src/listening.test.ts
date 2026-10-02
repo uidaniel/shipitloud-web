@@ -1,7 +1,7 @@
 // Filtering rules, built from real noise seen when probing HN and Bluesky (no network, no DB, no AI).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { domainWords, heuristicScore, queriesFor, topicMatch } from './listen.ts';
+import { domainWords, heuristicScore, queriesFor, topicMatch } from './listening.ts';
 
 const cfg = { keywords: ['invoice app', 'chasing clients for payment'], competitors: ['Wave', 'FreshBooks'] };
 const brand = { one_liner: 'Invoice from WhatsApp, get paid to your bank', pain_points: ['Chasing clients for payment', 'Making invoices by hand'], keywords: [], competitors: cfg.competitors };

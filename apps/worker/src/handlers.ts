@@ -6,7 +6,8 @@ import { makePosters } from './posters.ts';
 import { PlanLimitError, makeLaunchPlan, makeLaunchPosts } from './launch.ts';
 import { runReadiness } from './readiness.ts';
 import { makeDemoVideo } from './video.ts';
-import { draftReply, pollWorkspace } from './listen.ts';
+import { draftReply } from '@shipitloud/engine';
+import { pollWorkspace } from './listen.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
 
@@ -95,7 +96,7 @@ export const handlers: Record<string, Handler> = {
 
   async 'listen.draft'(p, job) {
     try {
-      await draftReply(job.workspace_id!, String(p.mention_id));
+      await draftReply(db, job.workspace_id!, String(p.mention_id));
     } catch (err) {
       if (err instanceof PlanLimitError) { await notifyOwner(job.workspace_id!, 'cap_reached', 'Plan limit reached', err.message, `${appUrl()}/pricing`); return; }
       throw err;

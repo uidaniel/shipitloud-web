@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { Submit } from '@/components/app/ui';
-import { changePassword, saveAutomation, saveNotifications, saveProduct, setKillSwitch, signOutEverywhere } from '../../actions';
+import { changePassword, createExtensionToken, revokeExtensionToken, saveAutomation, saveNotifications, saveProduct, setKillSwitch, signOutEverywhere } from '../../actions';
 import { PasswordInput } from '@/components/app/auth';
 
 function Saved({ state }: { state: { ok?: boolean; error?: string } }) {
@@ -163,6 +163,51 @@ export function AccountForm({ email, hasPassword }: { email: string; hasPassword
           <div className="pr-row-t"><b>Sign out everywhere</b><span>Ends your session on every device, including this one.</span></div>
           <Submit className="pr-btn" pending="Signing out…">Sign out everywhere</Submit>
         </div>
+      </form>
+    </div>
+  );
+}
+
+export function ExtensionForm({ ws, tokens }: { ws: string; tokens: { id: string; label: string; last_used_at: string | null; created_at: string }[] }) {
+  const [state, action] = useActionState(createExtensionToken, {});
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="pr-section" id="extension">
+      <div className="pr-section-h">
+        <h2>Chrome extension</h2>
+        <p>Find Reddit posts worth replying to and draft replies right on Reddit. Your browser does the reading; you click post.</p>
+      </div>
+      <div className="pr-section-b" style={{ display: 'grid', gap: 14 }}>
+        {state.token ? (
+          <div className="pr-banner pr-banner-info pr-fade-in" style={{ margin: 0, display: "grid", gap: 10 }}>
+            <b>Paste this into the extension. It won&apos;t be shown again.</b>
+            <div className="pr-token">
+              <code>{state.token}</code>
+              <button type="button" className="pr-btn pr-btn-sm" onClick={async () => { await navigator.clipboard.writeText(state.token!); setCopied(true); }}>{copied ? 'Copied' : 'Copy'}</button>
+            </div>
+          </div>
+        ) : (
+          <ol className="pr-steps">
+            <li>Install the ShipItLoud extension in Chrome.</li>
+            <li>Create a connection below and paste it into the extension.</li>
+            <li>Open Reddit. Posts worth a reply show up in the ShipItLoud panel.</li>
+          </ol>
+        )}
+        {tokens.length > 0 && (
+          <div className="pr-list" style={{ margin: 0 }}>
+            {tokens.map((t) => (
+              <div key={t.id} className="pr-row" style={{ padding: '10px 14px' }}>
+                <div className="pr-row-t"><b>{t.label}</b><span>{t.last_used_at ? `Last used ${new Date(t.last_used_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'Not used yet'}</span></div>
+                <form action={revokeExtensionToken}><input type="hidden" name="ws" value={ws} /><input type="hidden" name="id" value={t.id} /><Submit className="pr-btn pr-btn-ghost pr-btn-sm" pending="Removing…">Remove</Submit></form>
+              </div>
+            ))}
+          </div>
+        )}
+        {state.error && <p className="pr-error" role="alert" style={{ margin: 0 }}>{state.error}</p>}
+      </div>
+      <form action={action} className="pr-section-f">
+        <input type="hidden" name="ws" value={ws} />
+        <Submit pending="Creating…">{tokens.length ? 'Connect another browser' : 'Connect the extension'}</Submit>
       </form>
     </div>
   );

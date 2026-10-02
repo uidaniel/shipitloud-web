@@ -365,3 +365,7 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 .pr-strength-short i::after { transform: scaleX(.33); background: var(--err); }
 .pr-strength-ok i::after { transform: scaleX(.66); background: var(--warn); }
 .pr-strength-strong i::after { transform: scaleX(1); background: var(--ok); }
+.pr-token { display: flex; gap: 8px; align-items: center; padding: 6px 6px 6px 12px; border-radius: 9px; background: var(--panel); border: 1px solid var(--line-2); }
+.pr-token code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-family: inherit; font-size: 13px; color: var(--text); }
+.pr-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--muted); font-size: 14px; }
+.pr-banner-info { background: rgba(91, 61, 245, .1); color: var(--text); border: 1px solid rgba(164, 147, 255, .3); }

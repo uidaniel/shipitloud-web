@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShipItLoud</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; width: 320px; background: #0b0b10; color: #f5f5f2; font: 14px/1.45 Geist, Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+  main { padding: 16px; display: grid; gap: 14px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -0.02em; font-size: 15px; }
+  .brand b { color: #c6ff3d; font-weight: 600; }
+  p { margin: 0; color: #a3a3b1; font-size: 13px; }
+  form { display: grid; gap: 10px; }
+  label { font-size: 12px; color: #a3a3b1; }
+  input { width: 100%; height: 38px; padding: 0 12px; border-radius: 9px; border: 1px solid rgba(245,245,242,.14); background: #111118; color: #f5f5f2; font: inherit; outline: none; }
+  input:focus { border-color: #a493ff; }
+  button { height: 38px; padding: 0 14px; border-radius: 9px; border: 1px solid rgba(245,245,242,.14); background: #111118; color: #f5f5f2; font: inherit; font-weight: 500; cursor: pointer; }
+  button:hover { background: #1a1a24; }
+  .primary { background: #5b3df5; border-color: #5b3df5; color: #fff; }
+  .primary:hover { background: #7a62ff; }
+  button:disabled { opacity: .5; cursor: progress; }
+  .err { color: #f87171; font-size: 12px; min-height: 0; }
+  details summary { color: #6f6f7d; font-size: 12px; cursor: pointer; }
+  details input { margin-top: 6px; }
+  .ws { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #111118; border: 1px solid rgba(245,245,242,.08); }
+  .ws span { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; flex: none; }
+  h2 { margin: 0; font-size: 12px; font-weight: 500; color: #6f6f7d; text-transform: uppercase; letter-spacing: .06em; }
+  #links { display: grid; gap: 2px; font-size: 13px; color: #a3a3b1; }
+  #links a { display: grid; padding: 8px 10px; border-radius: 8px; color: #f5f5f2; text-decoration: none; }
+  #links a:hover { background: #16161f; }
+  #links a span { color: #6f6f7d; font-size: 12px; }
+  .row { display: flex; gap: 8px; }
+  .row button { flex: 1; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">
+    <svg viewBox="0 0 100 100" width="24" height="24" aria-hidden="true"><rect width="100" height="100" rx="24" fill="#5B3DF5"/><path d="M24 34 C24 29 29 26 33 29 L54 44 C58 47 58 53 54 56 L33 71 C29 74 24 71 24 66 Z" fill="#fff"/><path d="M64 40 A14 14 0 0 1 64 60" fill="none" stroke="#C6FF3D" stroke-width="6" stroke-linecap="round"/><path d="M72 32 A25 25 0 0 1 72 68" fill="none" stroke="#C6FF3D" stroke-width="6" stroke-linecap="round"/></svg>
+    <span>ShipIt<b>Loud</b></span>
+  </div>
+
+  <form id="connect" hidden>
+    <p>In ShipItLoud, open Settings → Chrome extension → Connect, then paste the code here.</p>
+    <label for="token">Connection code</label>
+    <input id="token" autocomplete="off" spellcheck="false" placeholder="sil_…">
+    <details>
+      <summary>Developer</summary>
+      <label for="api">Server</label>
+      <input id="api" autocomplete="off" spellcheck="false">
+    </details>
+    <button id="go" class="primary">Connect</button>
+    <div id="err" class="err" role="alert"></div>
+  </form>
+
+  <section id="connected" hidden style="display:grid;gap:14px">
+    <div class="ws"><span id="ws"></span><i class="dot" aria-hidden="true"></i></div>
+    <h2>Open today on Reddit</h2>
+    <div id="links"></div>
+    <p>Open any of these. The ShipItLoud panel scores the posts and drafts your replies. Nothing posts without you.</p>
+    <div class="row"><button id="settings">Open ShipItLoud</button><button id="disconnect">Disconnect</button></div>
+  </section>
+</main>
+<script src="popup.js" type="module"></script>
+</body>
+</html>

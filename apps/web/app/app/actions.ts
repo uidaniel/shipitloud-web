@@ -439,3 +439,26 @@ export async function setMentionStatus(form: FormData) {
   await sb.from('mentions').update({ status }).eq('id', str(form.get('mention'))).eq('workspace_id', wsId);
   revalidatePath(`/app/${wsId}/listening`);
 }
+
+// ---------------------------------------------------------------- Chrome extension
+/** A new connection token for the extension. Shown once; only its hash is stored. */
+export async function createExtensionToken(_: unknown, form: FormData): Promise<{ token?: string; error?: string }> {
+  const wsId = str(form.get('ws'));
+  const { user } = await requireWorkspace(wsId);
+  const { hashToken, newToken } = await import('@/lib/ext');
+  const token = newToken();
+  const admin = supabaseAdmin();
+  const { count } = await admin.from('extension_tokens').select('id', { count: 'exact', head: true }).eq('workspace_id', wsId).is('revoked_at', null);
+  if ((count ?? 0) >= 5) return { error: 'You have 5 connections already. Remove one first.' };
+  const { error } = await admin.from('extension_tokens').insert({ workspace_id: wsId, user_id: user.id, token_hash: hashToken(token), label: str(form.get('label'), 40) || 'Chrome' });
+  if (error) return { error: 'Couldn’t create a connection. Try again.' };
+  revalidatePath(`/app/${wsId}/settings`);
+  return { token };
+}
+
+export async function revokeExtensionToken(form: FormData) {
+  const wsId = str(form.get('ws'));
+  await requireWorkspace(wsId);
+  await supabaseAdmin().from('extension_tokens').update({ revoked_at: new Date().toISOString() }).eq('id', str(form.get('id'))).eq('workspace_id', wsId);
+  revalidatePath(`/app/${wsId}/settings`);
+}

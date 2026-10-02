@@ -5,6 +5,7 @@ import { Submit } from '@/components/app/ui';
 import { Icon } from '@/components/app/icons';
 import { PlatformIcon, type Platform } from '@/components/space/platform-icons';
 import { draftMention, listenNow, setListening, setMentionStatus } from '../../actions';
+import { smartLinks } from '@/lib/smart-links';
 import { KitRefresher } from '../kit/refresher';
 import { ListenForm, type ListenValues } from './listen-form';
 
@@ -26,7 +27,6 @@ function ago(iso: string | null) {
   return `${Math.round(m / 1440)}d ago`;
 }
 
-const enc = encodeURIComponent;
 
 export default async function Listening({ params, searchParams }: { params: Promise<{ ws: string }>; searchParams: Promise<{ f?: string; edit?: string }> }) {
   const { ws: id } = await params;
@@ -98,14 +98,8 @@ export default async function Listening({ params, searchParams }: { params: Prom
   ]);
 
   // Smart search links: Reddit and Indie Hackers are read in the founder's own browser, never by us.
-  const phrases = [...cfg.keywords, ...cfg.competitors.map((c: string) => `alternative to ${c}`)].slice(0, 6);
-  const subs = ((redditPost?.content as { subreddits?: string[] } | null)?.subreddits ?? []).slice(0, 3);
-  const links = [
-    ...phrases.slice(0, 4).map((p) => ({ icon: 'reddit' as const, label: p, where: 'Reddit, this week', href: `https://www.reddit.com/search/?q=${enc(`"${p}"`)}&type=posts&sort=new&t=week` })),
-    ...subs.map((s) => ({ icon: 'reddit' as const, label: `r/${s}`, where: 'Newest posts', href: `https://www.reddit.com/r/${enc(s)}/new/` })),
-    ...phrases.slice(0, 2).map((p) => ({ icon: 'indiehackers' as const, label: p, where: 'Indie Hackers, last month', href: `https://www.google.com/search?q=${enc(`site:indiehackers.com "${p}"`)}&tbs=qdr:m` })),
-    ...(ws.plan !== 'scale' ? phrases.slice(0, 2).map((p) => ({ icon: 'x' as const, label: p, where: 'X, live', href: `https://x.com/search?q=${enc(`"${p}"`)}&f=live` })) : []),
-  ];
+  const subs = ((redditPost?.content as { subreddits?: string[] } | null)?.subreddits ?? []);
+  const links = smartLinks(cfg, subs, ws.plan);
 
   return (
     <div className="pr-body pr-listen">
@@ -201,7 +195,7 @@ export default async function Listening({ params, searchParams }: { params: Prom
 
       <aside className="pr-listen-side">
         <div className="pr-section">
-          <div className="pr-section-h"><h2>Open today</h2><p>Reddit, Indie Hackers and X searches, opened in your own browser. With the extension, we score posts and draft replies right there.</p></div>
+          <div className="pr-section-h"><h2>Open today</h2><p>Reddit, Indie Hackers and X searches, opened in your own browser. With the <Link href={`/app/${id}/settings#extension`} className="pr-link">Chrome extension</Link>, we score Reddit posts and draft replies right there.</p></div>
           <div className="pr-section-b pr-links">
             {links.map((l) => (
               <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer" className="pr-linkrow">
