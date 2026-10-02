@@ -46,18 +46,13 @@ const vertexShader = /* glsl */ `
 
 const fragmentShader = /* glsl */ `
   uniform float uOpacity;
-  uniform float uLight;
   varying vec3 vColor;
   varying float vAlpha;
   void main() {
     float d = length(gl_PointCoord - 0.5);
     float a = smoothstep(0.5, 0.0, d);
     a = pow(a, 1.8);
-    // Light mode: stars become ink and violet specks (bright colours vanish on paper).
-    float lum = dot(vColor, vec3(0.299, 0.587, 0.114));
-    vec3 lightCol = mix(vec3(0.05, 0.05, 0.07), vec3(0.36, 0.24, 0.96), step(lum, 0.72) * 0.85);
-    vec3 col = mix(vColor, lightCol, uLight);
-    gl_FragColor = vec4(col, a * vAlpha * uOpacity * mix(1.0, 0.55, uLight));
+    gl_FragColor = vec4(vColor, a * vAlpha * uOpacity);
   }
 `;
 
@@ -96,7 +91,6 @@ function makePoints(positions: Float32Array, colors: Float32Array, sizes: Float3
       uMaxSize: { value: o.maxSize },
       uScale: { value: o.scale },
       uOpacity: { value: o.opacity },
-      uLight: { value: 0 },
     },
   });
   const points = new THREE.Points(geo, mat);
@@ -230,17 +224,6 @@ export function SpaceScene() {
     galaxy.points.rotation.z = -0.35;
     scene.add(stars.points, galaxyPivot, dust.points);
     const layers = [stars, galaxy, dust];
-    function setTheme() {
-      const light = document.documentElement.dataset.theme === 'light';
-      for (const l of layers) {
-        l.mat.uniforms.uLight!.value = light ? 1 : 0;
-        l.mat.blending = light ? THREE.NormalBlending : THREE.AdditiveBlending;
-        l.mat.needsUpdate = true;
-      }
-    }
-    setTheme();
-    const themeObserver = new MutationObserver(() => { setTheme(); if (reduce) renderStatic(); });
-    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     layers.forEach((l) => { l.mat.uniforms.uPixelRatio!.value = pr; });
 
     let mx = 0;
@@ -330,7 +313,6 @@ export function SpaceScene() {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
       window.removeEventListener('pointermove', onMove);
-      themeObserver.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
       layers.forEach((l) => { l.geo.dispose(); l.mat.dispose(); });
       renderer.dispose();

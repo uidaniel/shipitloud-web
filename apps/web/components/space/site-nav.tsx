@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { LogoIcon } from '@/components/logo';
 import { site } from '@/lib/site';
-import { ThemeToggle } from './theme-toggle';
 
 const product = [
   { id: 'how', label: 'How it works' },
@@ -87,8 +86,6 @@ export function SiteNav({ onHome = true }: { onHome?: boolean }) {
         <LogoIcon size={30} square={false} />
         <span className="fnav-word">ShipIt<b>Loud</b></span>
       </Link>
-
-      <ThemeToggle className="fnav-theme" />
 
       <div className="fnav-center">
         <button

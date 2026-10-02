@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import { Inter } from 'next/font/google';
-import { themeScript } from '@/components/space/theme-toggle';
 import { site } from '@/lib/site';
 import './globals.css';
 
@@ -23,10 +22,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="dark" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable} ${inter.variable}`}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${inter.variable}`}>
       <body>{children}</body>
     </html>
   );
