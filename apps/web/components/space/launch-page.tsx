@@ -11,6 +11,7 @@ import { LogoIcon } from '@/components/logo';
 import { site } from '@/lib/site';
 import type { WaitlistStats } from '@/lib/waitlist';
 import { SiteNav } from './site-nav';
+import { AnalyticsSide } from './analytics-side';
 import { Bars3D, SOURCES } from './bars-3d';
 import { Globe } from './globe';
 import { MacInbox } from './mac-inbox';
@@ -34,12 +35,24 @@ function Chars({ text, className }: { text: string; className?: string }) {
   );
 }
 
-const story = [
-  'Building it was the hard part.',
-  'Getting users shouldn’t be.',
-  'ShipItLoud reads your product, then writes your posts, makes your videos, finds people asking for what you built and drafts the replies.',
-  'You approve. We do the marketing.',
-];
+const pipeline = [
+  { title: 'Reads your product', note: 'Your site becomes a brand brain: customer, voice, competitors.', icon: 'eye' },
+  { title: 'Writes your posts', note: 'Launch threads and replies, in your voice.', icon: 'pen' },
+  { title: 'Makes your videos', note: 'Demo cuts and posters, captioned and sized.', icon: 'play' },
+  { title: 'Finds your users', note: 'People already asking for what you built.', icon: 'target' },
+] as const;
+
+function PipeIcon({ name }: { name: (typeof pipeline)[number]['icon'] }) {
+  const p = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      {name === 'eye' && <><path {...p} d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle {...p} cx="12" cy="12" r="3" /></>}
+      {name === 'pen' && <><path {...p} d="M4 20l1.2-4.6L15.6 5a2 2 0 0 1 2.8 0l.6.6a2 2 0 0 1 0 2.8L8.6 18.8z" /><path {...p} d="M13.5 7l3.5 3.5" /></>}
+      {name === 'play' && <><rect {...p} x="3" y="5" width="18" height="14" rx="3" /><path d="M10 9.2v5.6l4.6-2.8z" fill="currentColor" /></>}
+      {name === 'target' && <><circle {...p} cx="12" cy="12" r="8.5" /><circle {...p} cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1.4" fill="currentColor" /></>}
+    </svg>
+  );
+}
 
 const stages = [
   {
@@ -111,19 +124,19 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
           .to('.hero-copy', { y: -80, autoAlpha: 0, ease: 'none' }, 0)
 
         // ---- the story: lines light up as you read
-        gsap.timeline({ scrollTrigger: { trigger: '.story', start: 'top top', end: '+=180%', scrub: 0.5, pin: true } })
-          .from('.story-line', { autoAlpha: 0.12, y: 30, stagger: 0.6, duration: 0.6, ease: 'power2.out' });
+        const storyTl = gsap.timeline({ defaults: { ease: 'power3.out' }, scrollTrigger: { trigger: '.story-in', start: 'top 75%', once: true } });
+        storyTl
+          .from('.st-a', { y: 40, autoAlpha: 0, duration: 0.5 })
+          .from('.st-b', { y: 40, autoAlpha: 0, duration: 0.5 }, '-=0.2')
+          .from('.story-kicker', { y: 16, autoAlpha: 0, duration: 0.4 })
+          .from('.pipe-step', { y: 30, autoAlpha: 0, stagger: 0.15, duration: 0.4 }, '<');
+        gsap.utils.toArray<HTMLElement>('.pipe-step').forEach((step, i, all) => {
+          storyTl
+            .to('.pipe-line i', { scaleX: (i + 1) / all.length, duration: 0.35, ease: 'none' }, i === 0 ? '-=0.2' : '>')
+            .to(step, { className: 'pipe-step is-on', duration: 0.01 }, '<0.2');
+        });
+        storyTl.from('.story-stamp', { y: 20, autoAlpha: 0, scale: 0.96, duration: 0.5 }, '-=0.1');
 
-        // ---- flight path draws through the stages
-        const path = root.current!.querySelector<SVGPathElement>('.flight-path');
-        if (path) {
-          const len = path.getTotalLength();
-          gsap.fromTo(path, { strokeDasharray: len, strokeDashoffset: len }, {
-            strokeDashoffset: 0,
-            ease: 'none',
-            scrollTrigger: { trigger: '.stages', start: 'top 75%', end: 'bottom 70%', scrub: 0.5 },
-          });
-        }
         // Desktop: cards rise in. Phones: cards stick and stack, each new one sliding over the last.
         mm.add('(min-width: 900px)', () => {
           gsap.utils.toArray<HTMLElement>('.stage').forEach((el) => {
@@ -244,9 +257,22 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
         <section id="story" className="story" aria-label="Why ShipItLoud">
           <div className="story-photo" aria-hidden="true" />
           <div className="sp-wrap story-in">
-            {story.map((s, i) => (
-              <p key={i} className={`story-line${i === story.length - 1 ? ' story-last' : ''}`}>{s}</p>
-            ))}
+            <h2 className="story-title">
+              <span className="st-a">Building it was the hard part.</span>
+              <span className="st-b">Getting users <span className="loud">shouldn&apos;t be.</span></span>
+            </h2>
+            <p className="story-kicker">Paste your link. ShipItLoud does the rest of the launch work:</p>
+            <ol className="pipe">
+              <span className="pipe-line" aria-hidden="true"><i /></span>
+              {pipeline.map((step) => (
+                <li key={step.title} className="pipe-step">
+                  <span className="pipe-ico"><PipeIcon name={step.icon} /></span>
+                  <h3>{step.title}</h3>
+                  <p>{step.note}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="story-stamp"><span className="stamp-check" aria-hidden="true">✓</span>You approve. We do the marketing.</p>
           </div>
         </section>
 
@@ -255,20 +281,49 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
             <p className="eyebrow" data-reveal>How it works</p>
             <h2 id="how-h" className="title" data-reveal>Two stages. <span className="dim">One co‑founder.</span></h2>
             <div className="stages">
-              <svg className="flight" viewBox="0 0 1200 220" preserveAspectRatio="none" aria-hidden="true">
-                <path className="flight-ghost" d="M0 200 C 300 200, 420 40, 620 70 S 1000 10, 1200 20" />
-                <path className="flight-path" d="M0 200 C 300 200, 420 40, 620 70 S 1000 10, 1200 20" />
-              </svg>
-              {stages.map((s) => (
-                <article key={s.name} className="stage">
+              {stages.map((s, i) => (
+                <article key={s.name} className={`stage bento-${i}`}>
                   <span className="stage-tag">{s.tag}</span>
                   <h3 className="stage-name">{s.name}</h3>
                   <p className="stage-line">{s.line}</p>
                   <ul className="stage-list">
                     {s.items.map((it) => <li key={it}>{it}</li>)}
                   </ul>
+                  {i === 0 && (
+                    <div className="bv-kit" aria-hidden="true">
+                      <span className="bv-poster">Don&apos;t launch in <b>silence.</b></span>
+                      <span className="bv-video"><i /></span>
+                      <span className="bv-post"><i /><i /><i /></span>
+                    </div>
+                  )}
+                  {i === 2 && (
+                    <div className="bv-digest" aria-hidden="true">
+                      <div className="bv-digest-h"><b>Weekly digest</b><span>Mon 9:00</span></div>
+                      <div className="bv-digest-stats"><span><b>+112</b>signups</span><span><b>Reddit</b>top channel</span><span><b>6.8%</b>conversion</span></div>
+                      <ol><li>Post the demo video on X</li><li>Reply to 4 new Reddit threads</li><li>Raise the ad cap to $25</li></ol>
+                    </div>
+                  )}
+                  {i === 1 && (
+                    <div className="bv-reply" aria-hidden="true">
+                      <p className="bv-q"><span>r/SideProject</span>Any tools that help you actually launch?</p>
+                      <p className="bv-a"><span>Draft reply · score 94</span>I built ShipItLoud for exactly this…</p>
+                    </div>
+                  )}
                 </article>
               ))}
+              <div className="bento-tile bento-stat">
+                <span className="bt-k">From URL to launch kit</span>
+                <span className="bt-big">~5<small>min</small></span>
+                <span className="bt-note">Waitlist, posts, posters and a demo video.</span>
+              </div>
+              <div className="bento-tile bento-safe">
+                <span className="bt-k">Always in your control</span>
+                <div className="bt-toggles">
+                  <span><i className="on" />Approve before posting</span>
+                  <span><i className="on" />Daily ad cap $20</span>
+                  <span><i />Kill switch</span>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -298,7 +353,10 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
                   <span className="an-delta">+38% vs last week</span>
                 </div>
               </div>
-              <Bars3D />
+              <div className="an-body">
+                <Bars3D />
+                <AnalyticsSide />
+              </div>
             </div>
           </div>
         </section>

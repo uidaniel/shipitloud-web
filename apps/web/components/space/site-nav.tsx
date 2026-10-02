@@ -53,7 +53,7 @@ export function SiteNav({ onHome = true }: { onHome?: boolean }) {
     if (open) { setShown(true); return; }
     if (!shown) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const t = window.setTimeout(() => setShown(false), reduce ? 0 : 380);
+    const t = window.setTimeout(() => setShown(false), reduce ? 0 : 560);
     return () => window.clearTimeout(t);
   }, [open, shown]);
 
@@ -65,7 +65,12 @@ export function SiteNav({ onHome = true }: { onHome?: boolean }) {
     const pr = p.getBoundingClientRect();
     const br = b.getBoundingClientRect();
     p.style.setProperty('--ox', `${br.left + br.width / 2 - pr.left}px`);
-    p.style.setProperty('--oy', `${br.top + br.height / 2 - pr.top}px`);
+    const ox = br.left + br.width / 2 - pr.left;
+    const oy = br.top + br.height / 2 - pr.top;
+    p.style.setProperty('--oy', `${oy}px`);
+    // Exact radius to the farthest corner, so every frame of the reveal is visible.
+    const r = Math.hypot(Math.max(ox, pr.width - ox), Math.max(oy, pr.height - oy));
+    p.style.setProperty('--r', `${Math.ceil(r) + 2}px`);
   }, [shown]);
 
   return (

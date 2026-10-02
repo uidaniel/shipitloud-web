@@ -59,8 +59,11 @@ export function JoinForm({ onInk = false, meta = 'Free waitlist page · No card 
   return (
     <div className={`join${onInk ? ' on-ink' : ''}`}>
       {step === 'url' ? (
-        <form onSubmit={toEmail}>
-          <div className="join-box">
+        <form key="url" onSubmit={toEmail}>
+          <div className="join-box has-ico">
+            <span className="join-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+            </span>
             <label className="sr-only" htmlFor={`${id}-url`}>Your product URL</label>
             <input
               id={`${id}-url`}
@@ -68,16 +71,16 @@ export function JoinForm({ onInk = false, meta = 'Free waitlist page · No card 
               type="text"
               inputMode="url"
               autoComplete="url"
-              placeholder="Paste your product URL"
+              placeholder="yourproduct.com"
               value={productUrl}
               onChange={(e) => setProductUrl(e.target.value)}
             />
-            <button className="btn btn-primary" type="submit">Ship it loud</button>
+            <button className="btn btn-primary" type="submit">Ship it loud <span className="join-arrow" aria-hidden="true">→</span></button>
           </div>
           {meta && <p className="join-meta mono">{meta}</p>}
         </form>
       ) : (
-        <form onSubmit={submit} noValidate>
+        <form key="email" onSubmit={submit} noValidate>
           <div className="join-box">
             <label className="sr-only" htmlFor={`${id}-email`}>Email</label>
             <input
