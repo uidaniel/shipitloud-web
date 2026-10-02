@@ -254,3 +254,30 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 .pr-dot-ok, .pr-dot-bad { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; margin-top: 1px; }
 .pr-dot-ok { background: var(--ok-bg); color: var(--ok); }
 .pr-dot-bad { background: var(--err-bg); color: var(--err); }
+
+/* Demo video: the three cuts share one row height (widths follow 9:16, 1:1, 16:9). */
+.pr-cuts { display: grid; gap: 14px; grid-template-columns: minmax(0, 9fr) minmax(0, 16fr) minmax(0, 28.4fr); align-items: start; }
+.pr-cut { margin: 0; display: grid; gap: 8px; min-width: 0; }
+.pr-cut video, .pr-cuts > .sk { display: block; width: 100%; border-radius: 10px; background: #000; border: 1px solid var(--line); }
+.pr-cut-story video, .pr-cuts > .pr-cut-story { aspect-ratio: 9 / 16; }
+.pr-cut-square video, .pr-cuts > .pr-cut-square { aspect-ratio: 1; }
+.pr-cut-landscape video, .pr-cuts > .pr-cut-landscape { aspect-ratio: 16 / 9; }
+.pr-cut figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.pr-cut figcaption b { color: var(--fg); font-weight: 600; margin-right: 4px; }
+.pr-link { color: var(--fg); font-weight: 500; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.pr-link:hover { text-decoration-color: currentColor; }
+.pr-script { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 14px; }
+.pr-script li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; }
+.pr-script b { color: var(--muted); font-weight: 500; font-size: 12px; padding-top: 2px; }
+.pr-shots { display: flex; gap: 12px; flex-wrap: wrap; }
+.pr-shot { position: relative; width: 150px; height: 100px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: #000; }
+.pr-shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.pr-shot form { position: absolute; top: 6px; right: 6px; }
+.pr-shot-x { width: 24px; height: 24px; border-radius: 99px; border: 0; display: grid; place-items: center; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; opacity: 0; transition: opacity .15s; }
+.pr-shot:hover .pr-shot-x, .pr-shot-x:focus-visible { opacity: 1; }
+@media (hover: none) { .pr-shot-x { opacity: 1; } }
+@media (max-width: 720px) {
+  .pr-cuts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .pr-cut-landscape, .pr-cuts > .pr-cut-landscape { grid-column: 1 / -1; }
+  .pr-script li { grid-template-columns: 1fr; gap: 2px; }
+}

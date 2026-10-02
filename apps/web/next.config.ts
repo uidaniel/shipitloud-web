@@ -29,6 +29,8 @@ const config: NextConfig = {
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? '',
   },
   transpilePackages: ['@shipitloud/db', '@shipitloud/templates'],
+  // Screenshot uploads for the demo video go through a server action.
+  experimental: { serverActions: { bodySizeLimit: '26mb' } },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

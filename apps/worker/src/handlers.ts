@@ -5,6 +5,7 @@ import { buildBrand } from './brand.ts';
 import { makePosters } from './posters.ts';
 import { PlanLimitError, makeLaunchPlan, makeLaunchPosts } from './launch.ts';
 import { runReadiness } from './readiness.ts';
+import { makeDemoVideo } from './video.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
 
@@ -56,6 +57,18 @@ export const handlers: Record<string, Handler> = {
       const n = await makeLaunchPosts(ws);
       await makeLaunchPlan(ws);
       await notifyOwner(ws, 'kit_ready', `Your launch posts and 30-day plan are ready`, `${n} drafts are waiting for your OK.`, `${appUrl()}/app/${ws}/plan`);
+    } catch (err) {
+      if (err instanceof PlanLimitError) { await notifyOwner(ws, 'cap_reached', 'Plan limit reached', err.message, `${appUrl()}/pricing`); return; }
+      throw err;
+    }
+  },
+
+  /** Demo video: screenshots + script, rendered in three cuts. Takes a few minutes. */
+  async 'kit.video'(_p, job) {
+    const ws = job.workspace_id!;
+    try {
+      await makeDemoVideo(ws);
+      await notifyOwner(ws, 'kit_ready', 'Your demo video is ready', 'Three cuts: 9:16, 1:1 and 16:9. Approve it in your inbox.', `${appUrl()}/app/${ws}/kit?tab=video`);
     } catch (err) {
       if (err instanceof PlanLimitError) { await notifyOwner(ws, 'cap_reached', 'Plan limit reached', err.message, `${appUrl()}/pricing`); return; }
       throw err;

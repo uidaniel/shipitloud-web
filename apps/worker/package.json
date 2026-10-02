@@ -10,12 +10,14 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
+    "@shipitloud/ai": "*",
     "@shipitloud/core": "*",
     "@shipitloud/db": "*",
+    "@shipitloud/templates": "*",
     "@supabase/supabase-js": "^2.117.2",
+    "playwright-core": "^1.63.0",
     "tsx": "^4.23.15",
-    "@shipitloud/ai": "*",
-    "@shipitloud/templates": "*"
+    "@shipitloud/video": "*"
   },
   "devDependencies": {
     "@types/node": "^22"

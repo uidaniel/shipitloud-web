@@ -5,12 +5,14 @@ import { PlatformIcon, type Platform } from '@/components/space/platform-icons';
 import { Submit } from '@/components/app/ui';
 import { makeLaunchKit, runReadinessCheck, setDirectory } from '../../actions';
 import { PostersTab } from './posters-tab';
+import { VideoTab } from './video-tab';
 import { KitRefresher } from './refresher';
 
 export const metadata: Metadata = { title: 'Launch kit' };
 
 const TABS = [
   { key: 'posters', label: 'Posters' },
+  { key: 'video', label: 'Demo video' },
   { key: 'posts', label: 'Launch posts' },
   { key: 'readiness', label: 'Readiness check' },
   { key: 'directories', label: 'Directories' },
@@ -190,6 +192,7 @@ export default async function Kit({ params, searchParams }: { params: Promise<{ 
       </nav>
       <div style={{ marginTop: 10 }}>
         {active === 'posters' && <PostersTab id={id} />}
+        {active === 'video' && <VideoTab id={id} />}
         {active === 'posts' && <PostsTab id={id} />}
         {active === 'readiness' && <ReadinessTab id={id} url={ws.url} />}
         {active === 'directories' && <DirectoriesTab id={id} />}

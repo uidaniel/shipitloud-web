@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireUser, requireWorkspace } from '@/lib/supabase/server';
+import { requireUser, requireWorkspace, supabaseAdmin } from '@/lib/supabase/server';
 
 const str = (v: FormDataEntryValue | null, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
@@ -247,6 +247,42 @@ export async function makeLaunchKit(form: FormData) {
   const { sb } = await requireWorkspace(wsId);
   await enqueue(sb, wsId, 'kit.launch', {}, `launch:${wsId}:${Date.now()}`);
   revalidatePath(`/app/${wsId}`, 'layout');
+}
+
+export async function makeDemoVideo(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'kit.video', {}, `video:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/kit`);
+}
+
+const SHOT_TYPES: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
+
+/** Founder screenshots for the demo video. Up to 5, 5MB each. Phone-shaped images are tagged so portrait cuts use a phone frame. */
+export async function uploadShots(form: FormData) {
+  const wsId = str(form.get('ws'));
+  await requireWorkspace(wsId);
+  const admin = supabaseAdmin();
+  const { data: existing } = await admin.storage.from('assets').list(`${wsId}/shots`);
+  let room = 5 - (existing?.length ?? 0);
+  for (const f of form.getAll('shots')) {
+    if (room <= 0) break;
+    if (!(f instanceof File) || !SHOT_TYPES[f.type] || f.size > 5_000_000 || f.size === 0) continue;
+    const phone = str(form.get(`shape:${f.name}`)) === 'tall';
+    const path = `${wsId}/shots/${Date.now()}-${crypto.randomUUID().slice(0, 6)}${phone ? '-mobile' : ''}.${SHOT_TYPES[f.type]}`;
+    const { error } = await admin.storage.from('assets').upload(path, Buffer.from(await f.arrayBuffer()), { contentType: f.type });
+    if (!error) room--;
+  }
+  revalidatePath(`/app/${wsId}/kit`);
+}
+
+export async function removeShot(form: FormData) {
+  const wsId = str(form.get('ws'));
+  await requireWorkspace(wsId);
+  const name = str(form.get('name'), 120);
+  if (!/^[\w.-]+$/.test(name)) return;
+  await supabaseAdmin().storage.from('assets').remove([`${wsId}/shots/${name}`]);
+  revalidatePath(`/app/${wsId}/kit`);
 }
 
 export async function runReadinessCheck(form: FormData) {

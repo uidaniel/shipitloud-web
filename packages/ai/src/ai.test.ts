@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { BudgetExceededError, costOf, generate, type Ledger, type LedgerRow } from './client.ts';
 import { BrandBrainSchema, mockBrandBrain } from './prompts/brand-brain.ts';
+import { mockVideoScript, videoScriptPrompt } from './prompts/video.ts';
 
 const ledger = (spent: number): Ledger & { rows: LedgerRow[] } => {
   const rows: LedgerRow[] = [];
@@ -56,4 +57,13 @@ test('claim checker flags invented numbers and outcome words, allows backed fact
   assert.ok(flags.some((f) => f.includes('2x')));
   assert.ok(flags.some((f) => f.includes('500 freelancers')));
   assert.deepEqual(findUnsupportedClaims('Invoice from WhatsApp, get paid straight to your bank.', facts), []);
+});
+
+test('video script mock fits the shots and the stage', () => {
+  const b = { name: 'Balans', url: null, one_liner: null, target_customer: null, pain_points: ['Chasing clients for payment'], competitors: [], keywords: [], tone: null, dos: [], donts: [], launch_date: null };
+  const pre = mockVideoScript(b, 3, false);
+  assert.equal(pre.captions.length, 3);
+  assert.equal(pre.cta, 'Join the waitlist');
+  assert.equal(mockVideoScript(b, 2, true).cta, 'Try it today');
+  assert.match(videoScriptPrompt(b, [{ headings: ['A'] }, { headings: [] }], false), /exactly 2 captions/);
 });

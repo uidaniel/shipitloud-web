@@ -93,7 +93,10 @@ export function InboxItem({ ws, asset, threshold }: { ws: string; asset: InboxAs
           </form>
         ) : (
           <>
-            {asset.file_url && (
+            {asset.file_url && asset.type === 'video' && (
+              <video className="pr-poster" src={`${asset.file_url}#t=3`} controls muted playsInline preload="metadata" />
+            )}
+            {asset.file_url && asset.type !== 'video' && (
               // eslint-disable-next-line @next/next/no-img-element
               <a href={asset.file_url} target="_blank" rel="noopener noreferrer" className="pr-poster"><img src={asset.file_url} alt={asset.title} loading="lazy" /></a>
             )}
