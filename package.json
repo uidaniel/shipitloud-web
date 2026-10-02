@@ -1,0 +1,18 @@
+{
+  "name": "shipitloud",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @shipitloud/web",
+    "build": "npm run build -w @shipitloud/web",
+    "start": "npm run start -w @shipitloud/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
