@@ -12,6 +12,7 @@ import { findKeywords, writeArticle } from './blog.ts';
 import { findNicheFormats, makeCarousel, makeUgcVideo } from './ugc.ts';
 import { licenceProblems } from './footage.ts';
 import { draftBroadcast, draftWaitlistEmails, runSequence } from './emails.ts';
+import { buildDigest, dueDigests } from './digests.ts';
 import { checkUpdates, learnVoice, makeContentWeek, postFromFormat, postsForUpdate, repurpose } from './content.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
@@ -295,6 +296,12 @@ export const handlers: Record<string, Handler> = {
     }
   },
 
+  /** Weekly digest or first 7 days report. Scheduled ones are sent; one asked for in the app just shows there. */
+  async 'digest.build'(p, job) {
+    if (!job.workspace_id) throw new Error('digest.build needs a workspace');
+    await buildDigest(job.workspace_id, p.kind === 'first_week' ? 'first_week' : 'weekly', { notify: p.notify === true });
+  },
+
   /** Store the notification and deliver it on the owner's channels. */
   async notify(p, job) {
     if (!job.workspace_id) throw new Error('notify needs a workspace');
@@ -305,6 +312,8 @@ export const handlers: Record<string, Handler> = {
     check(await db.from('notifications').insert({ workspace_id: job.workspace_id, user_id: owner_id, kind: String(p.kind ?? 'info'), ...n, channels: sent }), 'store notification');
   },
 };
+
+let lastDigestCheck = 0;
 
 /** Housekeeping that runs every minute: expiry, reminders, platform-warning fallback. */
 export async function tick() {
@@ -335,6 +344,12 @@ export async function tick() {
   const tenMin = Math.floor(now.getTime() / 600_000);
   const seq = check(await db.from('email_settings').select('workspace_id').eq('sequence_on', true), 'sequences') as { workspace_id: string }[];
   for (const s of seq) await enqueue(s.workspace_id, 'email.sequence', {}, { key: `seq:${s.workspace_id}:${tenMin}` });
+
+  // Digests: Monday morning where the founder lives, and the first 7 days report once. Checked every 15 minutes.
+  if (now.getTime() - lastDigestCheck >= 15 * 60_000) {
+    lastDigestCheck = now.getTime();
+    for (const d of await dueDigests(now)) await enqueue(d.ws, 'digest.build', { kind: d.kind, notify: true }, { key: d.key });
+  }
 
   // Expire pending items whose moment has passed.
   check(await db.from('assets').update({ status: 'expired' }).eq('status', 'pending').lt('expires_at', now.toISOString()), 'expire');

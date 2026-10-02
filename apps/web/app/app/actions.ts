@@ -739,3 +739,12 @@ export async function draftBroadcastEmail(_: unknown, form: FormData): Promise<F
   revalidatePath(`/app/${wsId}/waitlist`);
   return { ok: true };
 }
+
+// ---------------------------------------------------------------- digest
+/** Write this week's digest now (shown on Momentum, not sent). At most once every few minutes. */
+export async function makeDigestNow(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'digest.build', { kind: 'weekly' }, `digestnow:${wsId}:${Math.floor(Date.now() / 300_000)}`);
+  revalidatePath(`/app/${wsId}/analytics`);
+}
