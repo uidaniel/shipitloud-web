@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { LogoIcon } from '@/components/logo';
 import { site } from '@/lib/site';
+import { ThemeToggle } from './theme-toggle';
 
 const product = [
   { id: 'how', label: 'How it works' },
@@ -25,6 +26,13 @@ const legal = [
 // Floating header: logo left, a centered Menu pill that opens into a panel, and the waitlist CTA right.
 export function SiteNav({ onHome = true }: { onHome?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 12);
+    on();
+    window.addEventListener('scroll', on, { passive: true });
+    return () => window.removeEventListener('scroll', on);
+  }, []);
   // Stays true through the closing animation so the panel can shrink back into the button.
   const [shown, setShown] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
@@ -74,11 +82,13 @@ export function SiteNav({ onHome = true }: { onHome?: boolean }) {
   }, [shown]);
 
   return (
-    <header className={`fnav${open ? ' is-open' : ''}${shown ? ' is-shown' : ''}`}>
+    <header className={`fnav${scrolled ? ' is-scrolled' : ''}${open ? ' is-open' : ''}${shown ? ' is-shown' : ''}`}>
       <Link href="/" className="fnav-logo" aria-label={`${site.name} home`}>
         <LogoIcon size={30} square={false} />
         <span className="fnav-word">ShipIt<b>Loud</b></span>
       </Link>
+
+      <ThemeToggle className="fnav-theme" />
 
       <div className="fnav-center">
         <button

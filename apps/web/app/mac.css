@@ -98,3 +98,20 @@
 .is-wait .ap-approve, .is-auto .ap-undo, .is-approved .ap-undo { display: inline-flex; }
 .is-approved .ap-approve { display: none; }
 .is-approved td { background: #f6fff0; }
+
+/* Laptop on phones: crop to the inbox, readable size. */
+@media (max-width: 759px) {
+  .mac-lid { padding: 2.5%; border-radius: 22px; }
+  .mac-notch, .mac-base, .mac-menubar, .ap-side, .sf-tabs, .sf-right, .sf-lights, .sf-btn { display: none; }
+  .mac-screen { aspect-ratio: 1 / 1; border-radius: 14px; }
+  .mac-ui { --px: calc(100cqw / 720); }
+  .sf-window { top: calc(16 * var(--px)); left: calc(16 * var(--px)); right: calc(16 * var(--px)); height: auto; bottom: calc(16 * var(--px)); }
+  .sf-url { width: calc(560 * var(--px)); }
+  .ap { height: calc(100% - 52 * var(--px)); }
+  .ap-main { padding: calc(22 * var(--px)) calc(20 * var(--px)); }
+  .ap-actions .ap-seg { display: none; }
+  .ap-tbl th:nth-child(2), .ap-tbl td:nth-child(2), .ap-tbl th:nth-child(3), .ap-tbl td:nth-child(3) { display: none; }
+  .ap-draft { max-width: calc(380 * var(--px)); }
+}
+
+.ap-ch { background: none !important; padding: 0; overflow: hidden; }

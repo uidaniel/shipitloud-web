@@ -66,7 +66,7 @@ export function PricingSpace() {
       <div className="pricing-top" data-reveal>
         <div>
           <h2 className="title">Pay once to launch. Monthly to keep growing.</h2>
-          <p className="kicker">No credits to count. Cancel any time.</p>
+          <p className="kicker">No credits. Clear monthly limits. Cancel any time.</p>
         </div>
         <div className="cur" role="group" aria-label="Currency" style={{ ['--i' as string]: keys.indexOf(cur) }}>
           <span className="cur-pill" aria-hidden="true" />
@@ -84,7 +84,7 @@ export function PricingSpace() {
             <div className="plan-inner">
               <div className="plan-head">
                 <span className="plan-mission">{p.period === 'one-time' ? 'One-time' : p.period === 'month' ? 'Monthly' : 'Free forever'}</span>
-                {p.featured && <span className="plan-flag">Most popular</span>}
+                {p.featured && <span className="plan-flag">Best to start</span>}
               </div>
               <h3 className="plan-name">{p.name}</h3>
               <div className="plan-price">

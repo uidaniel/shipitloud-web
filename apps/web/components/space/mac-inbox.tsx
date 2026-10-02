@@ -1,26 +1,21 @@
 import { LogoIcon } from '@/components/logo';
+import { PlatformIcon, type Platform } from './platform-icons';
 
 // The approval inbox as a real-looking screenshot: MacBook Pro, macOS menu bar, Safari (light), app UI.
 // Everything inside the screen is sized in --px (1/1280 of the screen width), so it scales like an image.
 
 const rows = [
-  { type: 'Reply', ch: 'hn', title: '“Any tools that help you actually launch? Built my app, now crickets.”', where: 'Hacker News · 14 min ago', score: 94, wait: true },
+  { type: 'Reply', ch: 'hn', title: '“Ask HN: How did you get your first 100 users?”', where: 'Hacker News · 14 min ago', score: 94, wait: true },
   { type: 'Post', ch: 'x', title: 'Launch thread: “We built ShipItLoud in 14 days. Here’s the kit it made for itself.”', where: 'X · scheduled Tue 9:00', score: 91, wait: false },
   { type: 'Poster', ch: 'ig', title: 'Countdown: 3 days to launch', where: 'Instagram · 1080×1350', score: 88, wait: false },
   { type: 'Video', ch: 'tt', title: 'Demo cut, 30s, captions on', where: 'Reels · TikTok · X', score: 86, wait: true },
   { type: 'Email', ch: 'mail', title: 'Welcome + referral nudge', where: 'Waitlist · all contacts', score: 90, wait: false },
 ];
 
+const channelIcon: Record<string, Platform> = { hn: 'hn', x: 'x', ig: 'instagram', tt: 'tiktok', mail: 'email' };
+
 function Channel({ ch }: { ch: string }) {
-  const map: Record<string, { bg: string; fg: string; t: string }> = {
-    hn: { bg: '#ff6600', fg: '#fff', t: 'Y' },
-    x: { bg: '#000', fg: '#fff', t: '𝕏' },
-    ig: { bg: '#e1306c', fg: '#fff', t: '◎' },
-    tt: { bg: '#111', fg: '#25f4ee', t: '♪' },
-    mail: { bg: '#5b3df5', fg: '#fff', t: '@' },
-  };
-  const c = map[ch]!;
-  return <span className="ap-ch" style={{ background: c.bg, color: c.fg }} aria-hidden="true">{c.t}</span>;
+  return <span className="ap-ch" aria-hidden="true"><PlatformIcon name={channelIcon[ch]!} size="100%" radius={0.24} /></span>;
 }
 
 const Ico = {
@@ -81,7 +76,7 @@ export function MacInbox() {
                 <div className="sf-tabs">
                   <span className="sf-tab is-on"><LogoIcon size={14} /><span>Approval inbox · ShipItLoud</span></span>
                   <span className="sf-tab"><span className="sf-fav-hn">Y</span><span>Ask HN: How did you get your first 100 users?</span></span>
-                  <span className="sf-tab"><span className="sf-fav-b">B</span><span>Balans · Budget together</span></span>
+                  <span className="sf-tab"><span className="sf-fav-b">B</span><span>Balans · Invoice from WhatsApp</span></span>
                 </div>
 
                 <div className="ap">

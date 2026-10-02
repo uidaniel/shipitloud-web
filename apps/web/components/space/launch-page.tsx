@@ -15,6 +15,7 @@ import { AnalyticsSide } from './analytics-side';
 import { Bars3D, SOURCES } from './bars-3d';
 import { Globe } from './globe';
 import { MacInbox } from './mac-inbox';
+import { PlatformIcon } from './platform-icons';
 import { motion } from './motion';
 import { PricingSpace } from './pricing-space';
 import { SpaceScene } from './space-scene';
@@ -140,7 +141,6 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
           });
         };
         mm.add('(max-width: 899px)', () => stack('.bt'));
-        mm.add('(max-width: 679px)', () => stack('[data-plan]'));
 
         // ---- mission control: drafts arrive, then one gets approved
         gsap.fromTo('.mac', { rotateX: 28, scale: 0.86, y: 40 }, {
@@ -260,16 +260,16 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
                 <h3>Paste your URL. Get the whole launch kit.</h3>
                 <p>Waitlist page, demo video, posters, launch posts and a 30-day plan, in your brand.</p>
                 <div className="bv-kit" aria-hidden="true">
-                  <span className="bv-poster">Don&apos;t launch in <b>silence.</b></span>
-                  <span className="bv-video"><i /></span>
-                  <span className="bv-post"><i /><i /><i /></span>
+                  <span className="bv-poster"><LogoIcon size={22} /><span>Don&apos;t launch in <b>silence.</b></span><small>shipitloud.com</small></span>
+                  <span className="bv-video"><span className="bv-vtext">POV: the app is done.</span><i /><small>0:30</small></span>
+                  <span className="bv-post"><span className="bv-post-who"><LogoIcon size={16} square={false} /><b>ShipItLoud</b></span><span className="bv-post-t">Launch day. We built ShipItLoud in 14 days, and it made its own launch kit.</span><span className="bv-post-m">X · thread 1/4</span></span>
                 </div>
               </article>
               <article className="bt bt-grow">
                 <h3>It finds people asking for what you built.</h3>
                 <p>Then drafts a reply in your voice.</p>
                 <div className="bv-reply" aria-hidden="true">
-                  <p className="bv-q"><span>r/SideProject · 14 min ago</span>Any tools that help you actually launch? Built my app, now crickets.</p>
+                  <p className="bv-q"><span className="bv-src"><PlatformIcon name="reddit" size={16} />r/SideProject · 14 min ago</span>Any tools that help you actually launch? Built my app, now crickets.</p>
                   <p className="bv-a"><span>Your draft</span>Same boat last year. I ended up building ShipItLoud for this. Happy to share what worked.</p>
                 </div>
               </article>
@@ -280,6 +280,7 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
               <article className="bt bt-digest">
                 <h3>Every Monday: what worked, and your next three moves.</h3>
                 <div className="bv-digest" aria-hidden="true">
+                  <div className="bv-digest-h"><b>Weekly digest</b><em className="ex-tag">Example</em></div>
                   <div className="bv-digest-stats"><span><b>+112</b>signups</span><span><b>Reddit</b>top channel</span><span><b>6.8%</b>conversion</span></div>
                   <ol><li>Post the demo video on X</li><li>Reply to 4 new Reddit threads</li><li>Raise the ad cap to $25</li></ol>
                 </div>
@@ -345,10 +346,11 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
                   <span className="a-tag">POV</span>
                   <div className="a-line">The app is done. Now you have to beg the internet to use it.</div>
                   <div className="a-term" aria-hidden="true">
-                    <div>$ git push origin main</div>
-                    <div className="ok">✓ deployed to production</div>
-                    <div>users: <span className="zero">0</span><span className="caret" /></div>
+                    <div className="t1">$ git push origin main</div>
+                    <div className="t2 ok">✓ deployed to production</div>
+                    <div className="t3">users: <span className="zero">0</span><span className="caret" /></div>
                   </div>
+                  <span className="a-scrub" aria-hidden="true"><i /></span>
                 </div>
                 <figcaption><span>Short video for Reels and TikTok</span><span className="mono">9:16 · 12s</span></figcaption>
               </figure>
@@ -358,7 +360,8 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
                     <LogoIcon size={34} square={false} />
                     <div><b>ShipItLoud</b> <span>@shipitloud</span></div>
                   </div>
-                  <div className="a-body">{'Building the product was the easy part.\n\nShipItLoud is the business co‑founder you never had: launch kit, listening, content and ads.\n\nYou approve. It ships.'}</div>
+                  <div className="a-body">{'Building the product was the easy part.\n\nShipItLoud is the business co‑founder you never had: launch kit, listening, content and ads.'}</div>
+                  <div className="a-attach" aria-hidden="true"><span>Don&apos;t launch in <b>silence.</b></span></div>
                   <div className="a-bar"><span className="tag">X · thread 1/4</span><span className="mono">Publish score 92</span></div>
                 </div>
                 <figcaption><span>Launch thread, written in your voice</span><span className="mono">X · LinkedIn</span></figcaption>
@@ -401,9 +404,19 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
                 </g>
               </svg>
               <div className="orbit-read">
-                <span className="orbit-num mono" data-total>{stats.total.toLocaleString('en-US')}</span>
-                <span className="orbit-of mono">/ {goal} signups</span>
-                <span className="orbit-week mono">+{stats.last7} this week</span>
+                {stats.total >= 25 ? (
+                  <>
+                    <span className="orbit-num mono" data-total>{stats.total.toLocaleString('en-US')}</span>
+                    <span className="orbit-of mono">/ {goal} signups</span>
+                    <span className="orbit-week mono">+{stats.last7} this week</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="orbit-num orbit-day">Day 0</span>
+                    <span className="orbit-of">The waitlist just opened</span>
+                    <span className="orbit-week">{stats.total ? `${stats.total} early ${stats.total === 1 ? 'signup' : 'signups'} so far` : 'Be one of the first'}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>

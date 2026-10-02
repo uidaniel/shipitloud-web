@@ -870,3 +870,152 @@ html:has(.space) body { background: transparent; }
   .story-title { font-size: clamp(30px, 9vw, 40px); }
   .story-kicker { font-size: 16px; }
 }
+
+/* ===== review fixes ===== */
+/* Header gets a solid band once you scroll, so content never slides under bare pills. */
+.fnav { inset: 0 0 auto; padding-top: 14px; padding-bottom: 14px; transition: background-color .25s ease, border-color .25s ease; border-bottom: 1px solid transparent; }
+.fnav.is-scrolled { background: #07070b; border-bottom-color: var(--line); }
+@media (max-width: 759px) { .fnav { inset: 0 0 auto; padding-top: 10px; padding-bottom: 10px; } }
+
+/* Pricing: plain grid on phones, no stacking. */
+@media (max-width: 679px) {
+  .plan-card { position: relative; top: auto !important; box-shadow: none; filter: none !important; transform: none !important; }
+}
+
+/* Example labels */
+.ex-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 7px; margin-left: 8px; border-radius: 999px; font-style: normal; font-size: 11px; font-weight: 500; color: var(--muted); border: 1px solid var(--line-2); vertical-align: 1px; }
+.bv-digest-h { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.bv-digest-h b { color: var(--paper); font-weight: 600; }
+
+/* Hero: tighter, less empty starfield. */
+.sp-hero { min-height: 0; padding-top: clamp(120px, 16vh, 170px); padding-bottom: clamp(56px, 8vh, 96px); }
+
+/* Counter before 25 signups */
+.orbit-day { font-size: clamp(48px, 6vw, 72px) !important; }
+
+/* Bento fan: real assets */
+.bv-poster { flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.bv-poster small { font-size: 10px; font-weight: 500; letter-spacing: 0; color: #8a8a93; }
+.bv-video { flex-direction: column; justify-content: space-between; align-items: flex-start; padding: 12px; }
+.bv-vtext { font-size: 12px; font-weight: 600; line-height: 1.15; color: var(--ink); letter-spacing: -0.02em; }
+.bv-video i { align-self: center; }
+.bv-video small { font-size: 10px; font-weight: 600; color: var(--ink); background: rgba(255,255,255,.55); padding: 1px 6px; border-radius: 4px; }
+.bv-post { display: flex !important; flex-direction: column; gap: 8px; color: var(--ink); }
+.bv-post-who { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.bv-post-t { font-size: 11.5px; line-height: 1.35; font-weight: 500; }
+.bv-post-m { margin-top: auto; font-size: 10px; color: #62626c; }
+
+/* Kit video card loops like a 12s clip */
+.a-meme { position: relative; }
+.a-scrub { position: absolute; left: 28px; right: 28px; bottom: 14px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.25); overflow: hidden; }
+.a-scrub i { display: block; height: 100%; width: 100%; background: #fff; transform-origin: 0 50%; transform: scaleX(0); }
+@media (prefers-reduced-motion: no-preference) {
+  .a-scrub i { animation: scrub 12s linear infinite; }
+  .a-term .t1 { animation: tline 12s infinite; }
+  .a-term .t2 { animation: tline2 12s infinite; }
+  .a-term .t3 { animation: tline3 12s infinite; }
+  .a-line { animation: tcap 12s infinite; }
+}
+@keyframes scrub { to { transform: scaleX(1); } }
+@keyframes tcap { 0%, 4% { opacity: 0; transform: translateY(8px); } 10%, 92% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes tline { 0%, 18% { opacity: 0; } 22%, 92% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes tline2 { 0%, 34% { opacity: 0; } 38%, 92% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes tline3 { 0%, 52% { opacity: 0; } 56%, 92% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Thread card: attached poster fills the space */
+.a-attach { border-radius: 12px; background: var(--ink); color: var(--paper); padding: 14px; min-height: 92px; display: flex; align-items: flex-end; font-size: 20px; font-weight: 600; letter-spacing: -0.04em; line-height: 1; }
+.a-attach b { background: var(--lime); color: var(--ink); padding: 0 .1em; font-weight: 600; }
+.a-post .a-body { flex: none; }
+.a-post .a-attach { flex: 1; }
+
+
+/* =====================================================================
+   Light mode. Dark is the default; [data-theme="light"] is set from the
+   header toggle (saved per visitor). Product pictures stay dark.
+   ===================================================================== */
+html[data-theme='light']:has(.space) { background: #f5f5f2; }
+html[data-theme='light'] .space {
+  --deep: #f5f5f2;
+  --panel: #ffffff;
+  --panel-2: #ffffff;
+  --paper: #0d0d12;
+  --muted: #55555f;
+  --faint: #85858f;
+  --line: rgba(13, 13, 18, .09);
+  --line-2: rgba(13, 13, 18, .16);
+  --violet-soft: #5b3df5;
+  color-scheme: light;
+}
+
+/* Dark islands keep the dark tokens: dashboard, black bento tiles, closing globe band, footer. */
+html[data-theme='light'] .space :is(.an-card, .bt-grow, .bt-ok, .bv-digest, .final-space, .sp-footer, .a-poster, .a-term) {
+  --deep: #07070b; --panel: #101018; --panel-2: #15151f; --paper: #f5f5f2;
+  --muted: #a3a3b1; --faint: #6f6f7d; --line: rgba(245,245,242,.09); --line-2: rgba(245,245,242,.16); --violet-soft: #a493ff;
+  color: var(--paper);
+}
+html[data-theme='light'] .space .final-space { background: #07070b; margin-top: clamp(96px, 14vh, 160px); }
+html[data-theme='light'] .space .final-space .join-box { background: rgba(16,16,24,.92); }
+html[data-theme='light'] .space .final-space .join-input { color: #f5f5f2; }
+
+/* Header */
+html[data-theme='light'] .fnav.is-scrolled { background: #f5f5f2; }
+html[data-theme='light'] :is(.fnav-pill, .fnav-panel) { background: #ffffff; color: #0d0d12; }
+html[data-theme='light'] .is-open .fnav-pill { background: #eeeeea; }
+html[data-theme='light'] .fnav-cta { background: #0d0d12; color: #f5f5f2; }
+html[data-theme='light'] .fnav-cta:hover { background: var(--lime); color: #0d0d12; }
+
+/* Theme toggle (both themes) */
+.theme-toggle { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 999px; border: 1px solid var(--line-2); background: #111118; color: var(--paper); cursor: pointer; transition: border-color .2s, transform .2s; }
+.theme-toggle:hover { border-color: rgba(245,245,242,.32); }
+.theme-toggle:active { transform: scale(.94); }
+.theme-toggle:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
+html[data-theme='light'] .theme-toggle { background: #ffffff; }
+html[data-theme='light'] .theme-toggle:hover { border-color: rgba(13,13,18,.32); }
+@media (min-width: 760px) { .fnav { grid-template-columns: 1fr auto auto auto; } .fnav-theme { justify-self: end; } }
+@media (max-width: 759px) {
+  .fnav { grid-template-columns: auto 1fr auto auto auto; }
+  .fnav-theme { grid-column: 3; grid-row: 1; width: 46px; height: 46px; }
+  .fnav-cta { grid-column: 4; }
+  .fnav-center { grid-column: 5; }
+  .is-shown .fnav-theme { visibility: hidden; }
+}
+
+/* Bands */
+html[data-theme='light'] :is(#how, #analytics, #pricing) { background: #ffffff; }
+html[data-theme='light'] #momentum { background: #e9e9e4; }
+html[data-theme='light'] #pricing .plan-inner, html[data-theme='light'] #pricing .plan-card.is-featured .plan-inner { background: #f7f7f4; }
+html[data-theme='light'] .plan-card { background: var(--line-2); }
+
+/* Hero input */
+html[data-theme='light'] .sp-hero .join-box.has-ico { background: linear-gradient(#fff, #fff) padding-box, linear-gradient(120deg, rgba(91,61,245,.6), rgba(198,255,61,.9) 55%, rgba(13,13,18,.14)) border-box; box-shadow: 0 18px 50px rgba(13,13,18,.08), 0 0 0 6px rgba(13,13,18,.025); }
+html[data-theme='light'] .space .join-input { color: #0d0d12; }
+html[data-theme='light'] .space .join-input::placeholder { color: #85858f; }
+html[data-theme='light'] .join-ico { background: rgba(91,61,245,.08); color: var(--violet); }
+html[data-theme='light'] .space .on-ink :is(.join-consent, .join-url) { color: #55555f; }
+html[data-theme='light'] .sp-hero .telemetry { background: #fff; }
+
+/* Lime as text/strokes doesn't read on paper: violet instead. */
+html[data-theme='light'] :is(.eyebrow, .perk-k, .orbit-week, .compare-tbl td.yes, .compare-chev) { color: var(--violet); }
+html[data-theme='light'] .kit-list li::before, html[data-theme='light'] .is-featured .plan-list li::before { border-color: var(--violet); }
+html[data-theme='light'] .orbit-fill { stroke: var(--violet); }
+html[data-theme='light'] .orbit-ship circle { fill: var(--violet); }
+html[data-theme='light'] .pipe-ico, html[data-theme='light'] .pipe-step .pipe-ico { background: rgba(91,61,245,.08); color: var(--violet); border-color: rgba(91,61,245,.2); }
+html[data-theme='light'] .live-dot { background: var(--violet); }
+
+/* Story */
+html[data-theme='light'] .story-photo { display: none; }
+html[data-theme='light'] .pipe-step, html[data-theme='light'] .pipe-step.is-on { background: #ffffff; }
+html[data-theme='light'] .pipe-line i { background: rgba(13,13,18,.22); }
+html[data-theme='light'] .story-stamp { background: #0d0d12; color: #f5f5f2; }
+
+/* Kit + pricing bits */
+html[data-theme='light'] .kit-list li { background: #ffffff; }
+html[data-theme='light'] .a-post { border: 1px solid var(--line-2); }
+html[data-theme='light'] .cur button[aria-pressed='true'] { color: #f5f5f2; }
+html[data-theme='light'] .perk { background: #ffffff; }
+/* Paper-coloured asset cards stay paper in both themes. */
+.a-post, .bv-post { background: #f5f5f2; color: #0d0d12; }
+html[data-theme='light'] .fnav-word b, html[data-theme='light'] .fnav-logo b { color: var(--violet); }
+
+.an-feed li { grid-template-columns: 20px 1fr auto; }
+.bv-src { display: flex !important; align-items: center; gap: 6px; }

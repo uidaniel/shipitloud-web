@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { PlatformIcon, type Platform } from './platform-icons';
 
 // Side panel for the example analytics dashboard: KPI tiles, a live signup feed, and the top post.
-const feed = [
-  { src: 'Reddit', what: 'reply in r/SideProject', color: '#ff4500' },
-  { src: 'X', what: 'launch thread, post 3', color: '#f5f5f2' },
-  { src: 'Referral', what: 'shared by an early user', color: '#c6ff3d' },
-  { src: 'Hacker News', what: 'Show HN comment', color: '#ff6600' },
-  { src: 'LinkedIn', what: 'founder story post', color: '#0a66c2' },
-  { src: 'Email', what: 'welcome sequence, day 2', color: '#a493ff' },
+const feed: { src: string; what: string; icon: Platform }[] = [
+  { src: 'Reddit', what: 'reply in r/SideProject', icon: 'reddit' },
+  { src: 'X', what: 'launch thread, post 3', icon: 'x' },
+  { src: 'Referral', what: 'shared by an early user', icon: 'referral' },
+  { src: 'Hacker News', what: 'Show HN comment', icon: 'hn' },
+  { src: 'LinkedIn', what: 'founder story post', icon: 'linkedin' },
+  { src: 'Email', what: 'welcome sequence, day 2', icon: 'email' },
 ];
 
 const spark = [12, 18, 15, 24, 31, 28, 42, 39, 55, 61, 58, 74];
@@ -63,7 +64,7 @@ export function AnalyticsSide() {
         <ul className="an-feed">
           {rows.map((r, i) => (
             <li key={`${head}-${i}`} className={i === 0 ? 'is-new' : undefined}>
-              <span className="an-dot" style={{ background: r.color }} />
+              <PlatformIcon name={r.icon} size={20} />
               <span className="an-feed-t"><b>{r.src}</b> {r.what}</span>
               <span className="an-feed-ago">{i === 0 ? `${ago}s` : `${i * 3}m`}</span>
             </li>
@@ -72,8 +73,8 @@ export function AnalyticsSide() {
       </div>
 
       <div className="an-block an-top">
-        <span className="an-kpi-k">Top post this week</span>
-        <p>“I built a budgeting app for couples. Here’s what 3 months of launching taught me.”</p>
+        <span className="an-kpi-k">Top post this week <em className="ex-tag">Example</em></span>
+        <p>“I built a WhatsApp bot that sends invoices for freelancers. Here’s what launching taught me.”</p>
         <span className="an-top-m">r/SideProject · <b>87 signups</b></span>
       </div>
     </aside>

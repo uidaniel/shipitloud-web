@@ -2,7 +2,14 @@ export const site = {
   name: 'ShipItLoud',
   tagline: 'You built it. Ship it loud.',
   description: 'Paste your product. Get a launch kit, a 30-day plan and your first users.',
-  url: (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, ''),
+  // NEXT_PUBLIC_SITE_URL wins; otherwise the host's own production URL (Netlify sets URL, Vercel sets
+  // VERCEL_PROJECT_PRODUCTION_URL). Localhost only in dev, so share previews never point at it.
+  url: (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '') ||
+    (process.env.NODE_ENV === 'production' ? 'https://shipitloud.com' : 'http://localhost:3000')
+  ).replace(/\/$/, ''),
   waitlistSlug: 'shipitloud',
   legalEntity: 'MOTX Studios',
   contactEmail: 'hello@shipitloud.com',
