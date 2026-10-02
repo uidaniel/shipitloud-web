@@ -1,4 +1,9 @@
+import { loadEnvConfig } from '@next/env';
 import type { NextConfig } from 'next';
+import path from 'node:path';
+
+// Monorepo: secrets live in the repo-root .env.local, shared by web and worker.
+loadEnvConfig(path.resolve(process.cwd(), '../..'));
 
 const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
