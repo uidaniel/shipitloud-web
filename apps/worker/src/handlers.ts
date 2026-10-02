@@ -2,6 +2,7 @@ import { decideTrust, deliver, execute, UNDO_WINDOW_MINUTES, type AssetType } fr
 import { actionsRepo, check, db, enqueue } from './db.ts';
 import { appUrl } from './env.ts';
 import { buildBrand } from './brand.ts';
+import { makePosters } from './posters.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
 
@@ -39,6 +40,13 @@ export async function notifyOwner(workspaceId: string, kind: string, title: stri
 }
 
 export const handlers: Record<string, Handler> = {
+  /** Launch kit posters: AI copy into designer templates, QA-gated, then into the inbox. */
+  async 'kit.posters'(p, job) {
+    if (!job.workspace_id) throw new Error('kit.posters needs a workspace');
+    const r = await makePosters(job.workspace_id, { templates: Array.isArray(p.templates) ? (p.templates as string[]) : undefined });
+    if (r.made) await notifyOwner(job.workspace_id, 'kit_ready', `${r.made} posters are ready for you`, 'Approve the ones you like.', `${appUrl()}/app/${job.workspace_id}/inbox`);
+  },
+
   /** Onboarding: crawl the site and draft the brand brain. */
   async 'brand.build'(_p, job) {
     if (!job.workspace_id) throw new Error('brand.build needs a workspace');

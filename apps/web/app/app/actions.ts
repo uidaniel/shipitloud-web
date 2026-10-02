@@ -233,3 +233,11 @@ export async function saveBrand(_: unknown, form: FormData): Promise<{ ok?: bool
   if (confirm) redirect(`/app/${wsId}/inbox`);
   return { ok: true };
 }
+
+// ---------------------------------------------------------------- launch kit
+export async function makePosters(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'kit.posters', {}, `posters:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/kit`);
+}

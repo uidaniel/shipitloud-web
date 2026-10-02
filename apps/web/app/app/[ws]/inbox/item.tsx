@@ -11,7 +11,9 @@ export interface InboxAsset {
   type: string;
   platform: string | null;
   title: string;
-  content: { text?: string; thread_url?: string };
+  content: { text?: string; thread_url?: string; slots?: Record<string, string> };
+  file_url?: string | null;
+  qa_score?: number | null;
   confidence: number | null;
   flags: string[];
   scheduled_for: string | null;
@@ -90,7 +92,13 @@ export function InboxItem({ ws, asset, threshold }: { ws: string; asset: InboxAs
             </div>
           </form>
         ) : (
-          asset.content.text && <div className="pr-item-body">{asset.content.text}</div>
+          <>
+            {asset.file_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <a href={asset.file_url} target="_blank" rel="noopener noreferrer" className="pr-poster"><img src={asset.file_url} alt={asset.title} loading="lazy" /></a>
+            )}
+            {asset.content.text && <div className="pr-item-body">{asset.content.text}</div>}
+          </>
         )}
       </div>
 

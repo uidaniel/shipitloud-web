@@ -21,7 +21,7 @@ export default async function Inbox({ params, searchParams }: { params: Promise<
   const { sb, ws } = await requireWorkspace(id);
 
   const [pendingRes, undoRes] = await Promise.all([
-    sb.from('assets').select('id, type, platform, title, content, confidence, flags, scheduled_for, expires_at, created_at')
+    sb.from('assets').select('id, type, platform, title, content, file_url, qa_score, confidence, flags, scheduled_for, expires_at, created_at')
       .eq('workspace_id', id).eq('status', 'pending').order('expires_at', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false }),
     sb.from('assets').select('id, type, platform, title, undo_until').eq('workspace_id', id).eq('status', 'auto_approved').gt('undo_until', new Date().toISOString()),
   ]);

@@ -226,3 +226,14 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 .pr-user > span { min-width: 0; flex: 1; }
 .pr-side-foot { grid-template-columns: minmax(0, 1fr); }
 .pr-side-foot > * { min-width: 0; }
+
+/* poster previews */
+.pr-poster { display: block; margin-top: 10px; width: min(280px, 100%); border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: #000; transition: transform .2s; }
+.pr-poster:hover { transform: translateY(-2px); }
+.pr-poster img { display: block; width: 100%; height: auto; }
+.pr-gallery { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.pr-card { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); display: flex; flex-direction: column; }
+.pr-card img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: #000; }
+.pr-card-b { padding: 12px 14px; display: grid; gap: 8px; }
+.pr-card-b b { font-size: 13px; font-weight: 600; }
+.pr-card-r { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

@@ -14,7 +14,8 @@
     "@shipitloud/db": "*",
     "@supabase/supabase-js": "^2.117.2",
     "tsx": "^4.23.15",
-    "@shipitloud/ai": "*"
+    "@shipitloud/ai": "*",
+    "@shipitloud/templates": "*"
   },
   "devDependencies": {
     "@types/node": "^22"
