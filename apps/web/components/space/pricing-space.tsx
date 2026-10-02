@@ -5,13 +5,6 @@ import gsap from 'gsap';
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { currencies, plans, type Currency } from '@/lib/site';
 
-const missions: Record<string, string> = {
-  free: 'Launchpad',
-  launch_pass: 'Liftoff',
-  grow: 'Orbit',
-  scale: 'Escape velocity',
-};
-
 // Usage caps and inclusions, PRD sections 11 and 14.
 const compare: { label: string; values: [string, string, string, string] }[] = [
   { label: 'Billing', values: ['Free', 'One-time, per product', 'Monthly', 'Monthly'] },
@@ -72,11 +65,8 @@ export function PricingSpace() {
     <div className="pricing">
       <div className="pricing-top" data-reveal>
         <div>
-          <p className="eyebrow">Pricing</p>
-          <h2 className="title">
-            Pick your <span className="loud">trajectory.</span>
-          </h2>
-          <p className="kicker">Pay once to launch, or keep growing every month. No credits to count.</p>
+          <h2 className="title">Pay once to launch. Monthly to keep growing.</h2>
+          <p className="kicker">No credits to count. Cancel any time.</p>
         </div>
         <div className="cur" role="group" aria-label="Currency" style={{ ['--i' as string]: keys.indexOf(cur) }}>
           <span className="cur-pill" aria-hidden="true" />
@@ -93,7 +83,7 @@ export function PricingSpace() {
           <article key={p.id} className={`plan-card${p.featured ? ' is-featured' : ''}`} onPointerMove={spotlight} data-plan>
             <div className="plan-inner">
               <div className="plan-head">
-                <span className="plan-mission">{missions[p.id]}</span>
+                <span className="plan-mission">{p.period === 'one-time' ? 'One-time' : p.period === 'month' ? 'Monthly' : 'Free forever'}</span>
                 {p.featured && <span className="plan-flag">Most popular</span>}
               </div>
               <h3 className="plan-name">{p.name}</h3>

@@ -15,7 +15,6 @@ import { AnalyticsSide } from './analytics-side';
 import { Bars3D, SOURCES } from './bars-3d';
 import { Globe } from './globe';
 import { MacInbox } from './mac-inbox';
-import { LAUNCHED_EVENT, Preloader, hasLaunched } from './preloader';
 import { motion } from './motion';
 import { PricingSpace } from './pricing-space';
 import { SpaceScene } from './space-scene';
@@ -54,26 +53,6 @@ function PipeIcon({ name }: { name: (typeof pipeline)[number]['icon'] }) {
   );
 }
 
-const stages = [
-  {
-    tag: 'Stage 1',
-    name: 'Launch',
-    line: 'Paste your URL. Get the whole kit in minutes.',
-    items: ['Brand brain from your site', 'Waitlist page with referrals', 'Demo video, posters, launch posts', '30-day launch plan'],
-  },
-  {
-    tag: 'Stage 2',
-    name: 'Grow',
-    line: 'Marketing that keeps running after launch day.',
-    items: ['Finds people asking for what you built', 'Drafts replies in your voice', 'Content, SEO blog and short videos', 'Ads autopilot with hard spend caps'],
-  },
-  {
-    tag: 'Every week',
-    name: 'Mission control',
-    line: 'What happened, what worked, your next three moves.',
-    items: ['One approval inbox', 'Trust mode for routine posts', 'Signups tracked by source', 'Kill switch on every spend'],
-  },
-];
 
 
 export function LaunchPage({ stats }: { stats: WaitlistStats }) {
@@ -83,10 +62,11 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
 
   // Smooth scroll; its velocity drives the starfield streaks.
   useEffect(() => {
+    // A fresh load always starts at the top.
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    window.scrollTo(0, 0);
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const lenis = new Lenis({ lerp: 0.09, anchors: { offset: -72 } });
-    const start = () => lenis.start();
-    if (!hasLaunched()) { lenis.stop(); window.addEventListener(LAUNCHED_EVENT, start, { once: true }); }
     lenis.on('scroll', (e: Lenis) => {
       motion.velocity = e.velocity;
       ScrollTrigger.update();
@@ -96,7 +76,6 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
     gsap.ticker.lagSmoothing(0);
     return () => {
       gsap.ticker.remove(tick);
-      window.removeEventListener(LAUNCHED_EVENT, start);
       lenis.destroy();
       motion.velocity = 0;
     };
@@ -111,9 +90,7 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
         // Reveal first, so every from() below records "visible" as its end state.
         gsap.set('.prehide', { autoAlpha: 1 });
         const intro = gsap.timeline({ paused: true, defaults: { ease: 'power4.out' } });
-        const play = () => intro.play();
-        if (hasLaunched()) requestAnimationFrame(play);
-        else window.addEventListener(LAUNCHED_EVENT, play, { once: true });
+        requestAnimationFrame(() => intro.play());
         intro
           .from('.sp-hero .ch', { yPercent: 115, autoAlpha: 0, duration: 0.9, stagger: 0.022 }, 0.1)
           .from('.hero-title .loud', { scaleX: 0, transformOrigin: '0% 50%', duration: 0.7, ease: 'power3.out' }, 0.3)
@@ -137,9 +114,9 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
         });
         storyTl.from('.story-stamp', { y: 20, autoAlpha: 0, scale: 0.96, duration: 0.5 }, '-=0.1');
 
-        // Desktop: cards rise in. Phones: cards stick and stack, each new one sliding over the last.
+        // Desktop: tiles rise in. Phones: tiles stick and stack, each new one sliding over the last.
         mm.add('(min-width: 900px)', () => {
-          gsap.utils.toArray<HTMLElement>('.stage').forEach((el) => {
+          gsap.utils.toArray<HTMLElement>('.bt').forEach((el) => {
             gsap.from(el, { y: 60, autoAlpha: 0, duration: 0.9, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 85%' } });
           });
         });
@@ -162,7 +139,7 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
             });
           });
         };
-        mm.add('(max-width: 899px)', () => stack('.stage'));
+        mm.add('(max-width: 899px)', () => stack('.bt'));
         mm.add('(max-width: 679px)', () => stack('[data-plan]'));
 
         // ---- mission control: drafts arrive, then one gets approved
@@ -223,7 +200,6 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
     <div ref={root} className="space">
       <div className="space-bg" aria-hidden="true" />
       <SpaceScene />
-      <Preloader />
 
       <SiteNav />
 
@@ -261,7 +237,7 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
               <span className="st-a">Building it was the hard part.</span>
               <span className="st-b">Getting users <span className="loud">shouldn&apos;t be.</span></span>
             </h2>
-            <p className="story-kicker">Paste your link. ShipItLoud does the rest of the launch work:</p>
+            <p className="story-kicker">Paste your link. ShipItLoud does the rest:</p>
             <ol className="pipe">
               <span className="pipe-line" aria-hidden="true"><i /></span>
               {pipeline.map((step) => (
@@ -278,60 +254,43 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
 
         <section id="how" className="sec" aria-labelledby="how-h">
           <div className="sp-wrap">
-            <p className="eyebrow" data-reveal>How it works</p>
-            <h2 id="how-h" className="title" data-reveal>Two stages. <span className="dim">One co‑founder.</span></h2>
-            <div className="stages">
-              {stages.map((s, i) => (
-                <article key={s.name} className={`stage bento-${i}`}>
-                  <span className="stage-tag">{s.tag}</span>
-                  <h3 className="stage-name">{s.name}</h3>
-                  <p className="stage-line">{s.line}</p>
-                  <ul className="stage-list">
-                    {s.items.map((it) => <li key={it}>{it}</li>)}
-                  </ul>
-                  {i === 0 && (
-                    <div className="bv-kit" aria-hidden="true">
-                      <span className="bv-poster">Don&apos;t launch in <b>silence.</b></span>
-                      <span className="bv-video"><i /></span>
-                      <span className="bv-post"><i /><i /><i /></span>
-                    </div>
-                  )}
-                  {i === 2 && (
-                    <div className="bv-digest" aria-hidden="true">
-                      <div className="bv-digest-h"><b>Weekly digest</b><span>Mon 9:00</span></div>
-                      <div className="bv-digest-stats"><span><b>+112</b>signups</span><span><b>Reddit</b>top channel</span><span><b>6.8%</b>conversion</span></div>
-                      <ol><li>Post the demo video on X</li><li>Reply to 4 new Reddit threads</li><li>Raise the ad cap to $25</li></ol>
-                    </div>
-                  )}
-                  {i === 1 && (
-                    <div className="bv-reply" aria-hidden="true">
-                      <p className="bv-q"><span>r/SideProject</span>Any tools that help you actually launch?</p>
-                      <p className="bv-a"><span>Draft reply · score 94</span>I built ShipItLoud for exactly this…</p>
-                    </div>
-                  )}
-                </article>
-              ))}
-              <div className="bento-tile bento-stat">
-                <span className="bt-k">From URL to launch kit</span>
-                <span className="bt-big">~5<small>min</small></span>
-                <span className="bt-note">Waitlist, posts, posters and a demo video.</span>
-              </div>
-              <div className="bento-tile bento-safe">
-                <span className="bt-k">Always in your control</span>
-                <div className="bt-toggles">
-                  <span><i className="on" />Approve before posting</span>
-                  <span><i className="on" />Daily ad cap $20</span>
-                  <span><i />Kill switch</span>
+            <h2 id="how-h" className="title" data-reveal>What it does for you</h2>
+            <div className="bento">
+              <article className="bt bt-launch">
+                <h3>Paste your URL. Get the whole launch kit.</h3>
+                <p>Waitlist page, demo video, posters, launch posts and a 30-day plan, in your brand.</p>
+                <div className="bv-kit" aria-hidden="true">
+                  <span className="bv-poster">Don&apos;t launch in <b>silence.</b></span>
+                  <span className="bv-video"><i /></span>
+                  <span className="bv-post"><i /><i /><i /></span>
                 </div>
-              </div>
+              </article>
+              <article className="bt bt-grow">
+                <h3>It finds people asking for what you built.</h3>
+                <p>Then drafts a reply in your voice.</p>
+                <div className="bv-reply" aria-hidden="true">
+                  <p className="bv-q"><span>r/SideProject · 14 min ago</span>Any tools that help you actually launch? Built my app, now crickets.</p>
+                  <p className="bv-a"><span>Your draft</span>Same boat last year. I ended up building ShipItLoud for this. Happy to share what worked.</p>
+                </div>
+              </article>
+              <article className="bt bt-ok">
+                <h3>Nothing goes out without your OK.</h3>
+                <span className="bt-approve" aria-hidden="true">Approve</span>
+              </article>
+              <article className="bt bt-digest">
+                <h3>Every Monday: what worked, and your next three moves.</h3>
+                <div className="bv-digest" aria-hidden="true">
+                  <div className="bv-digest-stats"><span><b>+112</b>signups</span><span><b>Reddit</b>top channel</span><span><b>6.8%</b>conversion</span></div>
+                  <ol><li>Post the demo video on X</li><li>Reply to 4 new Reddit threads</li><li>Raise the ad cap to $25</li></ol>
+                </div>
+              </article>
             </div>
           </div>
         </section>
 
         <section id="control" className="sec" aria-labelledby="ctrl-h">
           <div className="sp-wrap">
-            <p className="eyebrow" data-reveal>Mission control</p>
-            <h2 id="ctrl-h" className="title" data-reveal>You approve. <span className="dim">It ships.</span></h2>
+            <h2 id="ctrl-h" className="title" data-reveal>One inbox. You approve, it ships.</h2>
             <p className="kicker" data-reveal>Nothing posts, sends or spends without your OK, or the limits you set.</p>
           </div>
           <MacInbox />
@@ -339,8 +298,7 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
 
         <section id="analytics" className="sec" aria-labelledby="an-h">
           <div className="sp-wrap">
-            <p className="eyebrow" data-reveal>Analytics</p>
-            <h2 id="an-h" className="title" data-reveal>Know what&apos;s working. <span className="dim">Every signup, traced.</span></h2>
+            <h2 id="an-h" className="title" data-reveal>See where every signup came from.</h2>
             <p className="kicker" data-reveal>See which posts, replies and channels bring people in, then do more of what works.</p>
             <div className="an-card" data-reveal>
               <div className="an-head">
@@ -363,8 +321,7 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
 
         <section id="kit" className="sec" aria-labelledby="kit-h">
           <div className="sp-wrap">
-            <p className="eyebrow" data-reveal>What you get</p>
-            <h2 id="kit-h" className="title" data-reveal>Your launch kit, <span className="dim">ready in minutes.</span></h2>
+            <h2 id="kit-h" className="title" data-reveal>A launch kit you can post today.</h2>
             <p className="kicker" data-reveal>Paste your URL and get posts, posters and short videos in your brand, ready to publish. No designer, no editor, no blank page.</p>
             <ul className="kit-list" data-reveal>
               <li>Posters and feature cards</li>
@@ -413,8 +370,7 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
         <section id="momentum" className="sec" aria-labelledby="mom-h">
           <div className="sp-wrap telemetry-grid">
             <div>
-              <p className="eyebrow" data-reveal>Telemetry</p>
-              <h2 id="mom-h" className="title" data-reveal>Built in public. <span className="dim">Live numbers.</span></h2>
+              <h2 id="mom-h" className="title" data-reveal>We&apos;re launching with it too.</h2>
               <p className="kicker" data-reveal>
                 We&apos;re launching ShipItLoud with ShipItLoud. Goal: {goal} signups in {site.goals.signupDays} days, then {site.goals.paying} paying in {site.goals.payingDays}.
               </p>
@@ -461,7 +417,6 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
 
         <section id="orbit" className="final-space" aria-labelledby="final-h">
           <div className="sp-wrap final-in">
-            <p className="eyebrow" data-reveal>Your launch window is open</p>
             <h2 id="final-h" className="final-title" data-reveal>Don&apos;t launch in silence.<br /><span className="loud">Ship it loud.</span></h2>
             <div data-reveal>
               <Suspense>

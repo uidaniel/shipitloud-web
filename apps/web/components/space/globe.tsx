@@ -68,7 +68,7 @@ const bodyFrag = /* glsl */ `
   varying vec3 vView;
   void main() {
     float f = pow(1.0 - max(dot(vN, vView), 0.0), 3.0);
-    gl_FragColor = vec4(vec3(0.035, 0.03, 0.07) + vec3(0.36, 0.24, 0.96) * f * 0.55, 1.0);
+    gl_FragColor = vec4(vec3(0.035, 0.03, 0.07) + vec3(0.36, 0.24, 0.96) * f * 0.32, 1.0);
   }
 `;
 const atmoFrag = /* glsl */ `
@@ -76,7 +76,7 @@ const atmoFrag = /* glsl */ `
   varying vec3 vView;
   void main() {
     float i = pow(0.62 - dot(vN, vec3(0.0, 0.0, 1.0)), 3.0);
-    gl_FragColor = vec4(0.36, 0.24, 0.96, 1.0) * i * 0.75;
+    gl_FragColor = vec4(0.36, 0.24, 0.96, 1.0) * i * 0.38;
   }
 `;
 const pingVert = /* glsl */ `
@@ -236,7 +236,10 @@ export function Globe() {
       camera.fov = 2 * Math.atan(halfH / D) / DEG;
       camera.position.set(0, 0, D);
       camera.updateProjectionMatrix();
-      globe.position.y = 0.32 * halfH - 1; // top of the globe sits just above the canvas middle
+      // The canvas has headroom (HEADROOM x the visible band) so the atmosphere glow can fade out
+      // instead of being cut by the canvas edge. The globe top stays 66% up the visible band.
+      const HEADROOM = 1.8;
+      globe.position.y = -halfH + 2 * (0.66 / HEADROOM) * halfH - 1;
       // Keep dots and pings the same on-screen size whatever the zoom.
       const pxPerUnit = h / (2 * halfH);
       landMat.uniforms.uSize!.value = 0.0052 * pxPerUnit * D;
@@ -273,11 +276,15 @@ export function Globe() {
     render();
     io.observe(el);
     window.addEventListener('resize', onResize);
+    // The canvas box can change without a window resize (fonts, layout); keep the buffer in sync.
+    const ro = new ResizeObserver(onResize);
+    ro.observe(el);
 
     return () => {
       disposed = true;
       cancelAnimationFrame(raf);
       io.disconnect();
+      ro.disconnect();
       window.removeEventListener('resize', onResize);
       scene.traverse((o) => {
         const m = o as THREE.Mesh;

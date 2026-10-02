@@ -3,7 +3,6 @@ import { site } from '@/lib/site';
 import { getWaitlistStore } from '@/lib/waitlist';
 import './space.css';
 import './mac.css';
-import './preloader.css';
 
 // References: spacefs (two-tone headline), lovable + resend (one input, one button), raycast (dark hero,
 // mono meta), cursor + attio (product UI as console), dub (mono stats), cal (pricing), gumroad (flat lime blocks).
