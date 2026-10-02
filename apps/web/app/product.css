@@ -438,3 +438,28 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 .pr-slides img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); display: block; }
 .pr-caption { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; background: var(--panel-2); }
 .pr-caption p { margin: 0; white-space: pre-wrap; font-size: 14px; color: var(--text); }
+
+/* Momentum */
+.pr-stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.pr-stat { display: grid; gap: 4px; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); min-width: 0; }
+.pr-stat span { font-size: 12px; color: var(--muted); }
+.pr-stat b { font-size: 28px; font-weight: 650; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.pr-stat small { font-size: 12px; color: var(--faint); }
+.pr-stat small.up { color: var(--ok); } .pr-stat small.down { color: var(--warn); }
+.pr-spark { width: 100%; height: 28px; stroke: var(--violet-soft); stroke-width: 1.6; opacity: .9; }
+.pr-chart { margin: 0; display: grid; gap: 10px; }
+.pr-chart svg { width: 100%; height: 180px; display: block; }
+.pr-chart .bar { fill: var(--violet); }
+.pr-chart .line { stroke: var(--lime); stroke-width: 2; }
+.pr-chart figcaption { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.pr-chart .k { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.pr-chart .k.bar { background: var(--violet); } .pr-chart .k.line { background: var(--lime); margin-left: 10px; }
+.pr-table-tight td, .pr-table-tight th { padding: 10px 16px; }
+.pr-dotc { width: 18px; height: 18px; border-radius: 5px; background: var(--panel-2); display: inline-block; }
+.pr-progress { height: 8px; border-radius: 99px; background: var(--panel-2); overflow: hidden; }
+.pr-progress i { display: block; height: 100%; background: var(--lime); border-radius: 99px; transition: width .4s; }
+.pr-code { font-family: inherit; font-size: 12px; padding: 1px 6px; border-radius: 5px; background: var(--panel-2); color: var(--text); }
+/* Columns that can go on small screens (tables). */
+@media (max-width: 640px) { .hide-sm { display: none; } }
+.pr-stats { grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); }
+.pr-section > .pr-table-wrap { border-radius: 0 0 12px 12px; }

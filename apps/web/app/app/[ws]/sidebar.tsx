@@ -52,11 +52,9 @@ export function Sidebar({ ws, pending, meter, email, notifications, children }: 
     { href: `${base}/listening`, label: 'Listening', icon: Icon.ear },
     { href: `${base}/content`, label: 'Content', icon: Icon.pen },
     { href: `${base}/blog`, label: 'Blog', icon: Icon.doc },
+    { href: `${base}/analytics`, label: 'Momentum', icon: Icon.chart },
   ];
-  const later = [
-    { label: 'Analytics', icon: Icon.chart },
-  ];
-  const title = path.endsWith('/activity') ? 'Activity' : path.endsWith('/settings') ? 'Settings' : path.endsWith('/brand') ? 'Brand' : path.endsWith('/kit') ? 'Launch kit' : path.endsWith('/plan') ? 'Launch plan' : path.endsWith('/waitlist') ? 'Waitlist' : path.endsWith('/listening') ? 'Listening' : path.endsWith('/content') ? 'Content' : path.includes('/blog') ? 'Blog' : 'Inbox';
+  const title = path.endsWith('/activity') ? 'Activity' : path.endsWith('/settings') ? 'Settings' : path.endsWith('/brand') ? 'Brand' : path.endsWith('/kit') ? 'Launch kit' : path.endsWith('/plan') ? 'Launch plan' : path.endsWith('/waitlist') ? 'Waitlist' : path.endsWith('/listening') ? 'Listening' : path.endsWith('/content') ? 'Content' : path.includes('/blog') ? 'Blog' : path.endsWith('/analytics') ? 'Momentum' : 'Inbox';
 
   return (
     <>
@@ -70,10 +68,6 @@ export function Sidebar({ ws, pending, meter, email, notifications, children }: 
             <Link key={n.href} href={n.href} aria-current={path === n.href || path.startsWith(`${n.href}/`) ? 'page' : undefined}>
               {n.icon}{n.label}{!!n.count && <span className="count">{n.count}</span>}
             </Link>
-          ))}
-          <span className="pr-nav-k">Coming next</span>
-          {later.map((n) => (
-            <a key={n.label} aria-disabled="true" style={{ cursor: 'default' }}>{n.icon}{n.label}<span className="soon">Soon</span></a>
           ))}
           <span className="pr-nav-k" />
           <Link href={`${base}/settings`} aria-current={path === `${base}/settings` ? 'page' : undefined}>{Icon.settings}Settings</Link>

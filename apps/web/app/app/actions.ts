@@ -667,3 +667,30 @@ export async function makeUgc(form: FormData) {
   await enqueue(sb, wsId, f.kind === 'video' ? 'ugc.video' : 'ugc.carousel', { format_id: f.id, topic: str(form.get('topic'), 300) }, `ugc:${f.id}:${Date.now()}`);
   redirect(`/app/${wsId}/content?tab=videos`);
 }
+
+// ---------------------------------------------------------------- tracking
+/** A tracked short link for anywhere the founder shares their product (bio, newsletter, a talk). */
+export async function makeShortLink(_: unknown, form: FormData): Promise<{ link?: string; error?: string }> {
+  const wsId = str(form.get('ws'));
+  const { sb, ws } = await requireWorkspace(wsId);
+  const target = normalizeUrl(str(form.get('target'), 500) || ws.url || '');
+  if (!target) return { error: 'Add the page the link should open.' };
+  const source = str(form.get('source'), 40).toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'other';
+  const campaign = str(form.get('campaign'), 60).toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-|-$/g, '') || null;
+  const { createShortLink } = await import('@shipitloud/engine');
+  try {
+    const code = await createShortLink(sb, wsId, { target, source, medium: str(form.get('medium'), 20) || 'social', campaign });
+    revalidatePath(`/app/${wsId}/analytics`);
+    const { site } = await import('@/lib/site');
+    return { link: `${site.url}/l/${code}` };
+  } catch {
+    return { error: 'Couldn’t create the link. Try again.' };
+  }
+}
+
+export async function deleteShortLink(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await sb.from('short_links').delete().eq('id', str(form.get('id'))).eq('workspace_id', wsId);
+  revalidatePath(`/app/${wsId}/analytics`);
+}

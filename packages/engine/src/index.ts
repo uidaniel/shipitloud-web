@@ -5,3 +5,4 @@ export * from './preflight.ts';
 export * from './publish-score.ts';
 export * from './time.ts';
 export * from './seo-score.ts';
+export * from './links.ts';

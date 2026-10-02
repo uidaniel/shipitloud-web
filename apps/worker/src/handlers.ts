@@ -6,7 +6,7 @@ import { makePosters } from './posters.ts';
 import { PlanLimitError, makeLaunchPlan, makeLaunchPosts } from './launch.ts';
 import { runReadiness } from './readiness.ts';
 import { makeDemoVideo } from './video.ts';
-import { draftReply } from '@shipitloud/engine';
+import { NO_SHORTENER, draftReply, tagLinksInText, trackLinksInText } from '@shipitloud/engine';
 import { pollWorkspace } from './listen.ts';
 import { findKeywords, writeArticle } from './blog.ts';
 import { findNicheFormats, makeCarousel, makeUgcVideo } from './ugc.ts';
@@ -241,12 +241,29 @@ export const handlers: Record<string, Handler> = {
         return;
       }
     }
+    // Attribution: links to the product become tracked short links (or UTM-tagged real links where shorteners
+    // get posts removed), so clicks and signups are credited to this channel. Stored back, so what's copied is tracked.
+    let content = a.content as Record<string, unknown> & { text?: string; thread?: string[]; ref?: string };
+    if (a.type !== 'article' && typeof content.text === 'string') {
+      const { data: w } = await db.from('workspaces').select('url').eq('id', a.workspace_id).single();
+      const source = a.platform ?? 'social';
+      const campaign = (content.ref as string | undefined) ?? a.type;
+      const track = (t: string) => NO_SHORTENER.has(source)
+        ? Promise.resolve(tagLinksInText(t, w?.url ?? null, { source, medium: 'community', campaign }))
+        : trackLinksInText(db, a.workspace_id, t, { productUrl: w?.url ?? null, base: appUrl(), source, campaign, assetId: a.id });
+      const text = await track(content.text);
+      const thread = Array.isArray(content.thread) ? await Promise.all(content.thread.map(track)) : undefined;
+      if (text !== content.text) {
+        content = { ...content, text, ...(thread ? { thread } : {}) };
+        await db.from('assets').update({ content }).eq('id', a.id);
+      }
+    }
     const row = await execute(actionsRepo, {
       workspaceId: a.workspace_id,
       assetId: a.id,
       kind: a.type === 'email' ? 'send' : 'post',
       provider: a.platform ?? 'copy',
-      payload: { ...a.content, title: a.title },
+      payload: { ...content, title: a.title },
       idempotencyKey: `publish:${a.id}`,
     });
     if (row.status === 'copy_and_post') {

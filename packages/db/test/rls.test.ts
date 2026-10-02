@@ -119,3 +119,30 @@ test('claim_jobs hands each job to one worker only', () => tx(async () => {
   assert.equal(first.rowCount, 2);
   assert.equal(second.rowCount, 1);
 }));
+
+test('momentum counts each kind of activity once, by day and by channel, for the owner only', () => tx(async () => {
+  const ws = await workspaceFor(A);
+  await as(null); // service role writes, like the worker and the tracking routes
+  const { rows: [asset] } = await client.query(`insert into assets (workspace_id, type, platform, title, status) values ($1, 'post', 'x', 'Post', 'published') returning id`, [ws]);
+  await client.query(`insert into mentions (workspace_id, source, external_id, url, text, status) values ($1, 'hn', '1', 'https://x', 'q', 'new'), ($1, 'hn', '2', 'https://y', 'q', 'replied')`, [ws]);
+  const { rows: [link] } = await client.query(`insert into short_links (workspace_id, code, target_url, source) values ($1, 'abcde', 'https://p.dev', 'twitter') returning id`, [ws]);
+  await client.query(`select link_click($1), link_click($1)`, [link.id]);
+  await client.query(`insert into track_events (workspace_id, type, source) values ($1, 'signup', 'x'), ($1, 'pageview', 'x')`, [ws]);
+  const { rows: [page] } = await client.query(`insert into waitlist_pages (workspace_id, slug) values ($1, 'mom-test') returning id`, [ws]);
+  await client.query(`insert into waitlist_signups (workspace_id, page_id, email, email_normalized, consent, consent_text, referral_code, position, source) values ($1, $2, 'a@b.co', 'a@b.co', true, 'ok', 'rc1', 1, 'linkedin')`, [ws, page.id]);
+  void asset;
+
+  await as(A);
+  const { rows } = await client.query(`select * from momentum_daily($1, 7)`, [ws]);
+  assert.equal(rows.length, 7);
+  const today = rows.at(-1);
+  assert.deepEqual([today.conversations, today.replies, today.posts, today.clicks, today.signups], [2, 1, 1, 2, 2]);
+  const { rows: ch } = await client.query(`select * from momentum_channels($1, 7)`, [ws]);
+  const x = ch.find((r) => r.channel === 'x');
+  assert.deepEqual([x.clicks, x.signups, x.posts], [2, 1, 1]); // "twitter" and "x" are one channel
+  assert.equal(ch.find((r) => r.channel === 'linkedin').signups, 1);
+
+  await as(B);
+  assert.equal((await client.query(`select * from momentum_daily($1, 7)`, [ws])).rowCount, 0);
+  assert.equal((await client.query(`select * from short_links where workspace_id = $1`, [ws])).rowCount, 0);
+}));
