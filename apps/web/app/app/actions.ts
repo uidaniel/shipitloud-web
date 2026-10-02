@@ -32,11 +32,12 @@ export async function createWorkspace(_: unknown, form: FormData): Promise<{ err
   const { data, error } = await sb.from('workspaces').insert({ owner_id: user.id, product_name: name, url }).select('id').single();
   if (error || !data) return { error: 'Couldn’t create your workspace. Try again.' };
   await Promise.all([
-    sb.from('brand_brains').insert({ workspace_id: data.id }),
+    sb.from('brand_brains').insert({ workspace_id: data.id, status: url ? 'building' : 'idle' }),
     sb.from('brand_kits').insert({ workspace_id: data.id }),
     sb.from('voice_profiles').insert({ workspace_id: data.id }),
   ]);
-  redirect(`/app/${data.id}/inbox`);
+  if (url) await enqueue(sb, data.id, 'brand.build', {}, `brand:${data.id}:1`);
+  redirect(`/app/setup/${data.id}`);
 }
 
 // ---------------------------------------------------------------- approvals
@@ -183,4 +184,52 @@ export async function addExampleDrafts(form: FormData) {
   const { data } = await sb.from('assets').insert(rows).select('id');
   for (const a of data ?? []) await enqueue(sb, wsId, 'asset.intake', { asset_id: a.id }, `intake:${a.id}`);
   revalidatePath(`/app/${wsId}`, 'layout');
+}
+
+// ---------------------------------------------------------------- brand brain
+const lines = (v: FormDataEntryValue | null, maxItems = 15) =>
+  str(v, 4000).split('\n').map((l) => l.replace(/^[-•*]\s*/, '').trim()).filter(Boolean).slice(0, maxItems);
+
+/** No site (or the crawl failed): build from the founder's own description. */
+export async function buildFromDescription(_: unknown, form: FormData): Promise<{ error?: string }> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const description = str(form.get('description'), 3000);
+  if (description.length < 30) return { error: 'Tell us a bit more: what it does and who it’s for (a few sentences).' };
+  await sb.from('brand_brains').update({ description, status: 'building', error: null }).eq('workspace_id', wsId);
+  await enqueue(sb, wsId, 'brand.build', {}, `brand:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/setup/${wsId}`);
+  return {};
+}
+
+export async function rebuildBrand(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await sb.from('brand_brains').update({ status: 'building', error: null }).eq('workspace_id', wsId);
+  await enqueue(sb, wsId, 'brand.build', {}, `brand:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}`, 'layout');
+}
+
+export async function saveBrand(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const confirm = form.get('confirm') === '1';
+  const now = new Date().toISOString();
+  const one_liner = str(form.get('one_liner'), 160);
+  if (!one_liner) return { error: 'Add a one-line description.' };
+  const { error } = await sb.from('brand_brains').update({
+    one_liner,
+    target_customer: str(form.get('target_customer'), 600),
+    pain_points: lines(form.get('pain_points')),
+    keywords: lines(form.get('keywords'), 25),
+    competitors: lines(form.get('competitors')),
+    content_pillars: lines(form.get('content_pillars'), 6),
+    updated_at: now,
+    ...(confirm ? { confirmed_at: now } : {}),
+  }).eq('workspace_id', wsId);
+  await sb.from('voice_profiles').update({ tone: str(form.get('tone'), 120), updated_at: now }).eq('workspace_id', wsId);
+  if (error) return { error: 'Couldn’t save. Try again.' };
+  revalidatePath(`/app/${wsId}`, 'layout');
+  if (confirm) redirect(`/app/${wsId}/inbox`);
+  return { ok: true };
 }

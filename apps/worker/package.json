@@ -13,7 +13,8 @@
     "@shipitloud/core": "*",
     "@shipitloud/db": "*",
     "@supabase/supabase-js": "^2.117.2",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "@shipitloud/ai": "*"
   },
   "devDependencies": {
     "@types/node": "^22"

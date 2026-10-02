@@ -45,15 +45,15 @@ export function Sidebar({ ws, pending, meter, email, notifications, children }: 
   const nav = [
     { href: `${base}/inbox`, label: 'Inbox', icon: Icon.inbox, count: pending },
     { href: `${base}/activity`, label: 'Activity', icon: Icon.activity },
+    { href: `${base}/brand`, label: 'Brand', icon: Icon.brand },
   ];
   const later = [
-    { label: 'Brand', icon: Icon.brand },
     { label: 'Launch kit', icon: Icon.kit },
     { label: 'Launch plan', icon: Icon.plan },
     { label: 'Listening', icon: Icon.ear },
     { label: 'Analytics', icon: Icon.chart },
   ];
-  const title = path.endsWith('/activity') ? 'Activity' : path.endsWith('/settings') ? 'Settings' : 'Inbox';
+  const title = path.endsWith('/activity') ? 'Activity' : path.endsWith('/settings') ? 'Settings' : path.endsWith('/brand') ? 'Brand' : 'Inbox';
 
   return (
     <>

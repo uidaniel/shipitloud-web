@@ -1,6 +1,7 @@
 import { decideTrust, deliver, execute, UNDO_WINDOW_MINUTES, type AssetType } from '@shipitloud/core';
 import { actionsRepo, check, db, enqueue } from './db.ts';
 import { appUrl } from './env.ts';
+import { buildBrand } from './brand.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
 
@@ -38,6 +39,12 @@ export async function notifyOwner(workspaceId: string, kind: string, title: stri
 }
 
 export const handlers: Record<string, Handler> = {
+  /** Onboarding: crawl the site and draft the brand brain. */
+  async 'brand.build'(_p, job) {
+    if (!job.workspace_id) throw new Error('brand.build needs a workspace');
+    await buildBrand(job.workspace_id);
+  },
+
   /** A generator produced a draft: auto-approve under trust mode, or ask the founder. */
   async 'asset.intake'(p) {
     const a = await loadAsset(p.asset_id);

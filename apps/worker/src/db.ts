@@ -56,3 +56,18 @@ export async function enqueue(workspaceId: string | null, type: string, payload:
 }
 
 export { check };
+
+// ---------------------------------------------------------------- AI spend ledger
+import type { Ledger } from '@shipitloud/ai';
+
+export const aiLedger: Ledger = {
+  async spentThisMonth() {
+    const { data, error } = await db.rpc('ai_spend_this_month');
+    if (error) throw new Error(`ai_spend_this_month: ${error.message}`);
+    return Number(data ?? 0);
+  },
+  async record(row) {
+    const { error } = await db.from('ai_calls').insert(row);
+    if (error) console.error('[ai ledger]', error.message);
+  },
+};

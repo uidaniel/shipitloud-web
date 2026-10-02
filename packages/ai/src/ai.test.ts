@@ -1,0 +1,47 @@
+// No test here calls the real API.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { BudgetExceededError, costOf, generate, type Ledger, type LedgerRow } from './client.ts';
+import { BrandBrainSchema, mockBrandBrain } from './prompts/brand-brain.ts';
+
+const ledger = (spent: number): Ledger & { rows: LedgerRow[] } => {
+  const rows: LedgerRow[] = [];
+  return { rows, async spentThisMonth() { return spent; }, async record(r) { rows.push(r); } };
+};
+const args = (l: Ledger) => ({
+  ledger: l, purpose: 'test', promptVersion: 't@1', workspaceId: null, model: 'claude-haiku-4-5',
+  system: 'sys', user: 'hello', schema: BrandBrainSchema, maxTokens: 1500, mock: () => mockBrandBrain('Balans'),
+});
+
+test('cost math: Haiku 4.5 at $1/$5 per million, cache reads at 10%', () => {
+  assert.equal(costOf('claude-haiku-4-5', { input: 1_000_000, output: 0 }), 1);
+  assert.equal(costOf('claude-haiku-4-5', { input: 0, output: 1_000_000 }), 5);
+  assert.equal(costOf('claude-haiku-4-5', { input: 0, output: 0, cacheRead: 1_000_000 }), 0.1);
+  assert.equal(costOf('unknown-model', { input: 1_000_000, output: 0 }), 4, 'unknown models priced at the dearest');
+});
+
+test('mock mode never calls the API or records spend', async () => {
+  const prev = process.env.AI_MODE;
+  process.env.AI_MODE = 'mock';
+  const l = ledger(0);
+  const r = await generate(args(l));
+  assert.equal(r.mocked, true);
+  assert.equal(r.costUsd, 0);
+  assert.equal(l.rows.length, 0);
+  assert.equal(r.data.voice.tone.length > 0, true);
+  process.env.AI_MODE = prev;
+});
+
+test('budget cap blocks the call before any request is made', async () => {
+  const prev = { mode: process.env.AI_MODE, key: process.env.ANTHROPIC_API_KEY, budget: process.env.AI_MONTHLY_BUDGET_USD };
+  delete process.env.AI_MODE;
+  process.env.ANTHROPIC_API_KEY = 'sk-test-not-used';
+  process.env.AI_MONTHLY_BUDGET_USD = '1';
+  const l = ledger(0.999);
+  await assert.rejects(generate(args(l)), BudgetExceededError);
+  assert.equal(l.rows.length, 0, 'nothing recorded because nothing was sent');
+  Object.assign(process.env, { AI_MODE: prev.mode ?? '', ANTHROPIC_API_KEY: prev.key ?? '', AI_MONTHLY_BUDGET_USD: prev.budget ?? '' });
+  if (!prev.mode) delete process.env.AI_MODE;
+  if (!prev.key) delete process.env.ANTHROPIC_API_KEY;
+  if (!prev.budget) delete process.env.AI_MONTHLY_BUDGET_USD;
+});
