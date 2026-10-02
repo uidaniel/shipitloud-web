@@ -7,6 +7,8 @@ import { makeLaunchKit, runReadinessCheck, setDirectory } from '../../actions';
 import { PostersTab } from './posters-tab';
 import { VideoTab } from './video-tab';
 import { KitRefresher } from './refresher';
+import { AuditTab } from './audit-tab';
+import { NetworkTab } from './network-tab';
 
 export const metadata: Metadata = { title: 'Launch kit' };
 
@@ -14,6 +16,8 @@ const TABS = [
   { key: 'posters', label: 'Posters' },
   { key: 'video', label: 'Demo video' },
   { key: 'posts', label: 'Launch posts' },
+  { key: 'network', label: 'Your network' },
+  { key: 'audit', label: 'Page audit' },
   { key: 'readiness', label: 'Readiness check' },
   { key: 'directories', label: 'Directories' },
 ] as const;
@@ -194,6 +198,8 @@ export default async function Kit({ params, searchParams }: { params: Promise<{ 
         {active === 'posters' && <PostersTab id={id} />}
         {active === 'video' && <VideoTab id={id} />}
         {active === 'posts' && <PostsTab id={id} />}
+        {active === 'network' && <NetworkTab id={id} />}
+        {active === 'audit' && <AuditTab id={id} url={ws.url} />}
         {active === 'readiness' && <ReadinessTab id={id} url={ws.url} />}
         {active === 'directories' && <DirectoriesTab id={id} />}
       </div>

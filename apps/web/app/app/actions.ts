@@ -748,3 +748,33 @@ export async function makeDigestNow(form: FormData) {
   await enqueue(sb, wsId, 'digest.build', { kind: 'weekly' }, `digestnow:${wsId}:${Math.floor(Date.now() / 300_000)}`);
   revalidatePath(`/app/${wsId}/analytics`);
 }
+
+// ---------------------------------------------------------------- conversion: landing page audit, network launch
+export async function runPageAudit(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'kit.audit', {}, `audit:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/kit`);
+}
+
+export async function draftNetworkMessages(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'kit.network', {}, `network:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/kit`);
+}
+
+/** Count one more (or one fewer) person the founder sent a message to. */
+export async function countNetworkSend(ws: string, kind: string, delta: 1 | -1) {
+  const { sb } = await requireWorkspace(ws);
+  const { data, error } = await sb.rpc('network_sent', { p_ws: ws, p_kind: kind, p_delta: delta });
+  if (error) return null;
+  return data as number;
+}
+
+export async function draftLaunchEmail(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'email.draft_broadcast', { topic: 'We just launched: it is live today, and here is how to start' }, `launchmail:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/kit`);
+}

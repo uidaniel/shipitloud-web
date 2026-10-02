@@ -13,6 +13,7 @@ import { findNicheFormats, makeCarousel, makeUgcVideo } from './ugc.ts';
 import { licenceProblems } from './footage.ts';
 import { draftBroadcast, draftWaitlistEmails, runSequence } from './emails.ts';
 import { buildDigest, dueDigests } from './digests.ts';
+import { auditLandingPage, draftNetworkKit } from './conversion.ts';
 import { checkUpdates, learnVoice, makeContentWeek, postFromFormat, postsForUpdate, repurpose } from './content.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
@@ -189,6 +190,20 @@ export const handlers: Record<string, Handler> = {
   async 'email.sequence'(_p, job) {
     const r = await runSequence(job.workspace_id!);
     if (r.sent) console.log(`[email] ${job.workspace_id} sequence: ${r.sent} emails`);
+  },
+
+  /** Landing page audit: the top fix for clarity, call to action and trust. */
+  async 'kit.audit'(_p, job) {
+    const ws = job.workspace_id!;
+    const { data } = await db.from('workspaces').select('url').eq('id', ws).single();
+    if (!data?.url) throw new Error('Add your site link in Settings first.');
+    await planLimitNotice(ws, () => auditLandingPage(ws, data.url));
+  },
+
+  /** Personal launch messages for the founder's own network. */
+  async 'kit.network'(_p, job) {
+    const ws = job.workspace_id!;
+    await planLimitNotice(ws, () => draftNetworkKit(ws));
   },
 
   async 'kit.readiness'(_p, job) {
