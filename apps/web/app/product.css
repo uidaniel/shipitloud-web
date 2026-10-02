@@ -420,3 +420,21 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 .pr-serp p { margin: 0; font-size: 13px; color: var(--muted); }
 .pr-count-hint { float: right; color: var(--faint); font-variant-numeric: tabular-nums; }
 .pr-count-hint.over { color: var(--warn); }
+.pr-files { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+
+/* Short videos and carousels */
+.pr-variants { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 720px) { .pr-variants { grid-template-columns: minmax(0, 1fr); max-width: 320px; } }
+.pr-variant { margin: 0; display: grid; gap: 8px; min-width: 0; }
+.pr-variant video { width: 100%; aspect-ratio: 9 / 16; border-radius: 12px; background: #000; border: 1px solid var(--line); display: block; }
+.pr-variant-sk { width: 100%; aspect-ratio: 9 / 16; border-radius: 12px; display: block; }
+.pr-slide-sk { flex: 0 0 200px; aspect-ratio: 4 / 5; border-radius: 10px; }
+.pr-variant figcaption { display: grid; gap: 4px; font-size: 13px; }
+.pr-variant figcaption p { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
+.pr-variant-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pr-variant-h b { font-weight: 600; font-size: 13px; }
+.pr-slides { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x mandatory; }
+.pr-slides a { flex: 0 0 200px; scroll-snap-align: start; }
+.pr-slides img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); display: block; }
+.pr-caption { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; background: var(--panel-2); }
+.pr-caption p { margin: 0; white-space: pre-wrap; font-size: 14px; color: var(--text); }

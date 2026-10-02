@@ -2,9 +2,26 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { decryptToken, type ActionRow, type ActionsRepo } from '@shipitloud/core';
 import { need } from './env.ts';
 
+// Retry only when the connection itself failed: the request never reached the server, so retrying can't
+// duplicate a write. Anything that got a response (even an error) is returned as-is.
+const CONNECT_ERRORS = new Set(['ETIMEDOUT', 'ENETUNREACH', 'ECONNREFUSED', 'EAI_AGAIN', 'ENOTFOUND', 'UND_ERR_CONNECT_TIMEOUT']);
+export const isConnectError = (err: unknown) => {
+  const cause = (err as { cause?: { code?: string; errors?: { code?: string }[] } })?.cause;
+  return !!cause && (CONNECT_ERRORS.has(cause.code ?? '') || !!cause.errors?.length && cause.errors.every((e) => CONNECT_ERRORS.has(e.code ?? '')));
+};
+export const retryingFetch: typeof fetch = async (input, init) => {
+  for (let attempt = 1; ; attempt++) {
+    try { return await fetch(input, init); } catch (err) {
+      if (attempt >= 4 || !isConnectError(err)) throw err;
+      await new Promise((r) => setTimeout(r, attempt * 1500));
+    }
+  }
+};
+
 // Service-role client: bypasses RLS, so every query below filters by workspace explicitly.
 export const db: SupabaseClient = createClient(need('SUPABASE_URL'), need('SUPABASE_SERVICE_ROLE_KEY'), {
   auth: { persistSession: false },
+  global: { fetch: retryingFetch },
 });
 
 function check<T>(res: { data: T; error: { message: string } | null }, what: string): T {

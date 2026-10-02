@@ -30,7 +30,7 @@ export default async function Activity({ params }: { params: Promise<{ ws: strin
   const [actions, approvals, ready] = await Promise.all([
     sb.from('actions').select('id, kind, provider, status, reason, created_at, asset_id, assets(title)').eq('workspace_id', id).order('created_at', { ascending: false }).limit(60),
     sb.from('approvals').select('id, status, channel, note, decided_at, assets(title, platform)').eq('workspace_id', id).order('decided_at', { ascending: false }).limit(60),
-    sb.from('assets').select('id, title, platform, content, actions(result)').eq('workspace_id', id).eq('status', 'scheduled').order('updated_at', { ascending: false }),
+    sb.from('assets').select('id, type, title, platform, content, file_url, actions(result)').eq('workspace_id', id).eq('status', 'scheduled').order('updated_at', { ascending: false }),
   ]);
 
   type Row = { key: string; at: string; title: string; platform: string | null; what: string; status: string; note: string | null };
@@ -48,7 +48,12 @@ export default async function Activity({ params }: { params: Promise<{ ws: strin
 
   const readyItems = (ready.data ?? []).map((a) => {
     const result = one(a.actions as unknown as { result: { copyAndPost?: { text: string; openUrl: string } } }[] | null)?.result;
-    return { id: a.id, title: a.title, platform: a.platform, text: result?.copyAndPost?.text ?? (a.content as { text?: string }).text ?? '', openUrl: result?.copyAndPost?.openUrl ?? null };
+    const c = a.content as { text?: string; kind?: string; slides?: string[]; platforms?: string[] };
+    // Videos and carousels are posted by hand until the platforms' APIs are approved: give the files to download.
+    const files = c.kind === 'carousel' && c.slides?.length ? c.slides.map((url, i) => ({ label: `Slide ${i + 1}`, url }))
+      : a.file_url && (a.type === 'video' || a.type === 'poster') ? [{ label: a.type === 'video' ? 'Video' : 'Image', url: a.file_url }] : [];
+    const also = (c.platforms ?? []).filter((x) => x !== a.platform);
+    return { id: a.id, title: a.title, platform: a.platform, text: result?.copyAndPost?.text ?? c.text ?? '', openUrl: result?.copyAndPost?.openUrl ?? null, files, also };
   });
 
   return (

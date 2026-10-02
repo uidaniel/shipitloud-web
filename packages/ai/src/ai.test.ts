@@ -90,3 +90,9 @@ test('claim checker flags security promises, retention outcomes and pricing it w
   assert.ok(flags.some((f) => f.startsWith('Pricing claim')));
   assert.deepEqual(findUnsupportedClaims('Balans is free to try.', 'Balans is free to try for 14 days'), []);
 });
+
+test('claim checker flags time statistics', () => {
+  const flags = findUnsupportedClaims('Most freelancers spend 10 hours a month chasing unpaid invoices.', 'Invoice from WhatsApp');
+  assert.ok(flags.some((f) => f.includes('10 hours a month')), flags.join('|'));
+  assert.deepEqual(findUnsupportedClaims('Send one reminder every week.', 'x'), []);
+});

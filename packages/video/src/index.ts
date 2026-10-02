@@ -1,2 +1,2 @@
 export * from './types.ts';
-export { renderVideo } from './render.ts';
+export { renderBeats, renderVideo } from './render.ts';

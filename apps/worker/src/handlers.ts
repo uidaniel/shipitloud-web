@@ -9,6 +9,8 @@ import { makeDemoVideo } from './video.ts';
 import { draftReply } from '@shipitloud/engine';
 import { pollWorkspace } from './listen.ts';
 import { findKeywords, writeArticle } from './blog.ts';
+import { findNicheFormats, makeCarousel, makeUgcVideo } from './ugc.ts';
+import { licenceProblems } from './footage.ts';
 import { checkUpdates, learnVoice, makeContentWeek, postFromFormat, postsForUpdate, repurpose } from './content.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
@@ -155,6 +157,22 @@ export const handlers: Record<string, Handler> = {
     });
   },
 
+  /** UGC engine: formats for the niche, then videos (3 hook variants) and carousels. */
+  async 'ugc.formats'(_p, job) {
+    await planLimitNotice(job.workspace_id!, () => findNicheFormats(job.workspace_id!));
+  },
+  async 'ugc.video'(p, job) {
+    const ws = job.workspace_id!;
+    await planLimitNotice(ws, async () => {
+      const r = await makeUgcVideo(ws, String(p.format_id), typeof p.topic === 'string' ? p.topic.slice(0, 300) : '');
+      await notifyOwner(ws, 'content_ready', `${r.variants} video versions are ready`, 'Same video, three different hooks. Approve the ones you like.', `${appUrl()}/app/${ws}/content?tab=videos`);
+    });
+  },
+  async 'ugc.carousel'(p, job) {
+    const ws = job.workspace_id!;
+    await planLimitNotice(ws, () => makeCarousel(ws, String(p.format_id), typeof p.topic === 'string' ? p.topic.slice(0, 300) : ''));
+  },
+
   async 'kit.readiness'(_p, job) {
     const ws = job.workspace_id!;
     const { data } = await db.from('workspaces').select('url').eq('id', ws).single();
@@ -211,6 +229,18 @@ export const handlers: Record<string, Handler> = {
   async 'asset.publish'(p) {
     const a = await loadAsset(p.asset_id);
     if (!['approved', 'auto_approved'].includes(a.status)) return; // undone or rejected meanwhile
+    // Licence gate (PRD section 22): anything built from footage needs a commercial licence for every clip.
+    const ugcId = (a.content as { ugc_video_id?: string }).ugc_video_id;
+    if (ugcId) {
+      const { data: v } = await db.from('ugc_videos').select('footage_sources, licence_ids').eq('id', ugcId).maybeSingle();
+      const problems = v ? await licenceProblems(v.footage_sources ?? [], v.licence_ids ?? []) : ['The video record is missing'];
+      if (problems.length) {
+        await actionsRepo.insertAction({ workspace_id: a.workspace_id, asset_id: a.id, kind: 'post', provider: a.platform ?? 'copy', idempotency_key: `publish:${a.id}`, status: 'blocked', reason: `Unlicensed footage: ${problems.join('; ')}`.slice(0, 500), amount_cents: null, payload: {}, result: {} });
+        await db.from('assets').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('id', a.id);
+        await notifyOwner(a.workspace_id, 'failed', `Not posted: ${a.title}`, 'Some footage in it has no licence on record, so we stopped it. Remake the video.', `${appUrl()}/app/${a.workspace_id}/content?tab=videos`, `licence:${a.id}`);
+        return;
+      }
+    }
     const row = await execute(actionsRepo, {
       workspaceId: a.workspace_id,
       assetId: a.id,

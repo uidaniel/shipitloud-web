@@ -5,13 +5,14 @@ import { requireWorkspace } from '@/lib/supabase/server';
 import { Submit } from '@/components/app/ui';
 import { Icon } from '@/components/app/icons';
 import { PlatformIcon, type Platform } from '@/components/space/platform-icons';
-import { planWeek, repurposePost, setWeeklyPlan, writeFromFormat } from '../../actions';
+import { findNicheFormats, makeUgc, planWeek, repurposePost, setWeeklyPlan, writeFromFormat } from '../../actions';
+import { VideosTab } from './videos-tab';
 import { KitRefresher } from '../kit/refresher';
 import { ManualUpdateForm, SourcesForm, VoiceForm, WebhookForm } from './forms';
 
 export const metadata: Metadata = { title: 'Content' };
 
-const TABS = [{ key: 'week', label: 'This week' }, { key: 'library', label: 'Formats' }, { key: 'updates', label: 'Updates' }, { key: 'voice', label: 'Voice' }] as const;
+const TABS = [{ key: 'week', label: 'This week' }, { key: 'library', label: 'Formats' }, { key: 'videos', label: 'Videos' }, { key: 'updates', label: 'Updates' }, { key: 'voice', label: 'Voice' }] as const;
 const ICON: Record<string, Platform> = { x: 'x', linkedin: 'linkedin', whatsapp: 'email', instagram: 'instagram', tiktok: 'tiktok', reddit: 'reddit', hn: 'hn' };
 const STATUS: Record<string, { label: string; cls: string }> = {
   pending: { label: 'Needs you', cls: 'pr-chip-warn' }, approved: { label: 'Approved', cls: 'pr-chip-ok' }, auto_approved: { label: 'Auto-approved', cls: 'pr-chip-violet' },
@@ -86,7 +87,7 @@ export default async function Content({ params, searchParams }: { params: Promis
   const [{ data: profile }, { data: src }, { data: jobs }, { data: cap }, { data: brain }] = await Promise.all([
     sb.from('profiles').select('timezone').eq('id', user.id).maybeSingle(),
     sb.from('content_sources').select('changelog_url, github_repo, weekly_plan, last_checked_at, last_planned_at').eq('workspace_id', id).maybeSingle(),
-    sb.from('jobs').select('type').eq('workspace_id', id).like('type', 'content.%').in('status', ['queued', 'running']),
+    sb.from('jobs').select('type').eq('workspace_id', id).or('type.like.content.%,type.like.ugc.%').in('status', ['queued', 'running']),
     sb.from('plan_limits').select('monthly_cap').eq('plan', ws.plan).eq('metric', 'ai_drafts').maybeSingle(),
     sb.from('brand_brains').select('status').eq('workspace_id', id).maybeSingle(),
   ]);
@@ -104,37 +105,58 @@ export default async function Content({ params, searchParams }: { params: Promis
     ]);
     body = <Week id={id} items={[...((scheduled ?? []) as Item[]), ...((loose ?? []) as Item[])]} tz={tz} busy={running.has('content.week')} />;
   } else if (active === 'library') {
-    const { data: formats } = await sb.from('viral_formats').select('slug, kind, platforms, name, hook_pattern, example, why, needs').order('kind').order('name');
-    const byKind = new Map<string, NonNullable<typeof formats>>();
-    for (const f of formats ?? []) { if (!byKind.has(f.kind)) byKind.set(f.kind, []); byKind.get(f.kind)!.push(f); }
+    const { data: formats } = await sb.from('viral_formats').select('id, slug, kind, platforms, name, hook_pattern, example, why, needs, workspace_id').order('kind').order('name');
+    const mine = (formats ?? []).filter((f) => f.workspace_id === id);
+    const shared = (formats ?? []).filter((f) => !f.workspace_id);
+    const byKind = new Map<string, typeof shared>();
+    for (const f of shared) { if (!byKind.has(f.kind)) byKind.set(f.kind, []); byKind.get(f.kind)!.push(f); }
+    const card = (f: (typeof shared)[number]) => (
+      <article key={f.id} className="pr-format">
+        <div className="pr-format-h"><b>{f.name}</b><span>{f.platforms.join(' · ')}</span></div>
+        <p className="pr-format-hook">{f.hook_pattern}</p>
+        <pre className="pr-format-ex">{f.example}</pre>
+        <p className="pr-format-why">{f.why}</p>
+        {f.needs && <span className="pr-chip pr-chip-warn" style={{ justifySelf: 'start' }}>Needs {f.needs}</span>}
+        {f.kind === 'post' ? (
+          <form action={writeFromFormat} className="pr-format-act">
+            <input type="hidden" name="ws" value={id} /><input type="hidden" name="slug" value={f.slug} />
+            {f.platforms.includes('x') && <Submit className="pr-btn pr-btn-sm" name="platform" value="x" pending="Writing…">Write for X</Submit>}
+            {f.platforms.includes('linkedin') && <Submit className="pr-btn pr-btn-sm" name="platform" value="linkedin" pending="Writing…">Write for LinkedIn</Submit>}
+          </form>
+        ) : allowed && (
+          <form action={makeUgc} className="pr-format-act">
+            <input type="hidden" name="ws" value={id} /><input type="hidden" name="format" value={f.id} />
+            <Submit className="pr-btn pr-btn-sm" pending="Starting…" disabled={running.has('ugc.video') || running.has('ugc.carousel')}>{f.kind === 'video' ? 'Make this video' : 'Make this carousel'}</Submit>
+          </form>
+        )}
+      </article>
+    );
     body = (
       <div style={{ display: 'grid', gap: 22 }}>
-        <p className="pr-lead" style={{ margin: 0 }}>Proven shapes for posts. Pick one and we write it for your product, in your voice. Formats that work for you rise to the top over time.</p>
+        <div className="pr-content-head" style={{ alignItems: 'center' }}>
+          <p className="pr-lead" style={{ margin: 0 }}>Proven shapes for posts, short videos and carousels. Pick one and we make it for your product, in your voice and brand.</p>
+          {allowed && (
+            <form action={findNicheFormats}><input type="hidden" name="ws" value={id} /><Submit className="pr-btn" pending="Starting…" disabled={running.has('ugc.formats')}>{running.has('ugc.formats') ? 'Finding…' : mine.length ? 'Find more for my audience' : 'Find formats for my audience'}</Submit></form>
+          )}
+        </div>
+        {(mine.length > 0 || running.has('ugc.formats')) && (
+          <section className="pr-day">
+            <h3>For your audience</h3>
+            <div className="pr-formats">
+              {running.has('ugc.formats') && !mine.length ? [0, 1, 2].map((i) => <div key={i} className="pr-format"><div className="sk sk-title" /><div className="sk sk-line" /><div className="sk" style={{ height: 70 }} /></div>) : mine.map(card)}
+            </div>
+          </section>
+        )}
         {['post', 'video', 'carousel'].filter((k) => byKind.has(k)).map((k) => (
           <section key={k} className="pr-day">
-            <h3>{KIND[k]}{k !== 'post' && <span className="pr-chip" style={{ marginLeft: 8 }}>Coming with video remix</span>}</h3>
-            <div className="pr-formats">
-              {byKind.get(k)!.map((f) => (
-                <article key={f.slug} className="pr-format">
-                  <div className="pr-format-h"><b>{f.name}</b><span>{f.platforms.join(' · ')}</span></div>
-                  <p className="pr-format-hook">{f.hook_pattern}</p>
-                  <pre className="pr-format-ex">{f.example}</pre>
-                  <p className="pr-format-why">{f.why}</p>
-                  {f.needs && <span className="pr-chip pr-chip-warn" style={{ justifySelf: 'start' }}>Needs {f.needs}</span>}
-                  {k === 'post' && (
-                    <form action={writeFromFormat} className="pr-format-act">
-                      <input type="hidden" name="ws" value={id} /><input type="hidden" name="slug" value={f.slug} />
-                      {f.platforms.includes('x') && <Submit className="pr-btn pr-btn-sm" name="platform" value="x" pending="Writing…">Write for X</Submit>}
-                      {f.platforms.includes('linkedin') && <Submit className="pr-btn pr-btn-sm" name="platform" value="linkedin" pending="Writing…">Write for LinkedIn</Submit>}
-                    </form>
-                  )}
-                </article>
-              ))}
-            </div>
+            <h3>{KIND[k]}</h3>
+            <div className="pr-formats">{byKind.get(k)!.map(card)}</div>
           </section>
         ))}
       </div>
     );
+  } else if (active === 'videos') {
+    body = <VideosTab id={id} busy={['ugc.video', 'ugc.carousel', 'ugc.formats'].find((t) => running.has(t)) ?? null} />;
   } else if (active === 'updates') {
     const { data: updates } = await sb.from('product_updates').select('id, source, title, url, published_at, used_at, created_at').eq('workspace_id', id).order('created_at', { ascending: false }).limit(20);
     const h = await headers();
@@ -204,7 +226,7 @@ export default async function Content({ params, searchParams }: { params: Promis
       </div>
       {busy && (
         <div className="pr-banner pr-banner-info pr-fade-in" role="status" style={{ marginTop: 14 }}>
-          <span><span className="spin" style={{ verticalAlign: '-2px', marginRight: 8 }} />{running.has('content.week') ? 'Planning your week. About a minute.' : running.has('content.repurpose') ? 'Repurposing into a thread, LinkedIn post, status and poster…' : running.has('content.voice') ? 'Learning your voice…' : 'Writing…'}</span>
+          <span><span className="spin" style={{ verticalAlign: '-2px', marginRight: 8 }} />{running.has('ugc.video') ? 'Rendering three video versions. About 5 minutes.' : running.has('ugc.carousel') ? 'Making your carousel…' : running.has('ugc.formats') ? 'Finding formats for your audience…' : running.has('content.week') ? 'Planning your week. About a minute.' : running.has('content.repurpose') ? 'Repurposing into a thread, LinkedIn post, status and poster…' : running.has('content.voice') ? 'Learning your voice…' : 'Writing…'}</span>
         </div>
       )}
       <nav className="pr-tabs" aria-label="Content" style={{ marginTop: 14 }}>

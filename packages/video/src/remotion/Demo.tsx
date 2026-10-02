@@ -4,7 +4,7 @@ import { T, type DemoProps, type Shot, type VideoTheme } from '../types';
 
 const FONT = 'Geist, system-ui, sans-serif';
 
-function useFonts() {
+export function useFonts() {
   const [handle] = useState(() => delayRender('fonts'));
   useEffect(() => {
     const faces = [['Geist-Medium.woff2', '500'], ['Geist-SemiBold.woff2', '600'], ['Geist-Bold.woff2', '700']] as const;
@@ -19,7 +19,7 @@ function useBeat(length: number) {
   return interpolate(f, [0, T.fade, length - T.fade, length], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 }
 
-function Words({ text, size, color, delay = 0, weight = 700, align = 'left' }: { text: string; size: number; color: string; delay?: number; weight?: number; align?: 'left' | 'center' }) {
+export function Words({ text, size, color, delay = 0, weight = 700, align = 'left' }: { text: string; size: number; color: string; delay?: number; weight?: number; align?: 'left' | 'center' }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   return (
@@ -32,7 +32,7 @@ function Words({ text, size, color, delay = 0, weight = 700, align = 'left' }: {
   );
 }
 
-function Brand({ name, logo, theme, size }: { name: string; logo: string | null; theme: VideoTheme; size: number }) {
+export function Brand({ name, logo, theme, size }: { name: string; logo: string | null; theme: VideoTheme; size: number }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: size * 0.45 }}>
       {logo ? <Img src={logo} style={{ width: size * 1.6, height: size * 1.6, borderRadius: size * 0.36, objectFit: 'contain' }} /> : null}

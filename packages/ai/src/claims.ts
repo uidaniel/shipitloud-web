@@ -27,6 +27,10 @@ export function findUnsupportedClaims(text: string, facts: string): string[] {
   for (const m of text.matchAll(/\b(works every time|always works|never fails|every (?:single )?(?:freelancer|user|customer|founder|business|client)s?(?: we know)?|everyone loves|no one else)\b/gi)) {
     flags.add(`Absolute claim: "${m[0]}"`);
   }
+  // Time statistics ("10 hours a month chasing invoices") need a real source.
+  for (const m of text.matchAll(/\b\d[\d,.]*\s*(?:hours?|hrs?|minutes?|days?|weeks?)\s+(?:a|per|every|each)\s+(?:day|week|month|year)\b/gi)) {
+    if (!f.includes(m[0].toLowerCase())) flags.add(`Unverified number: "${m[0]}"`);
+  }
   // Before/after results ("from 30 days to 7") need a real source.
   for (const m of text.matchAll(/\bfrom\s+\d[\d,.]*\s*(?:days?|hours?|weeks?|minutes?|%|x)?\s+to\s+\d[\d,.]*\b/gi)) {
     if (!f.includes(m[0].toLowerCase())) flags.add(`Unverified result: "${m[0]}"`);

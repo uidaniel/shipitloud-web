@@ -1,6 +1,11 @@
 // Load the repo-root .env.local (shared by web and worker) without overriding real env vars.
 import { readFileSync } from 'node:fs';
+import { setDefaultAutoSelectFamilyAttemptTimeout } from 'node:net';
 import { join } from 'node:path';
+
+// Node tries IPv6 and IPv4 together and gives each attempt only 250ms. On slower links without IPv6 that
+// drops connections that would have worked (Anthropic, Supabase, Google Fonts). Give each attempt 3s.
+setDefaultAutoSelectFamilyAttemptTimeout(3000);
 
 const root = join(import.meta.dirname, '..', '..', '..');
 for (const file of ['.env.local', '.env']) {

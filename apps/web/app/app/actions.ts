@@ -649,3 +649,21 @@ export async function setArticleLive(form: FormData) {
   revalidatePath(`/app/${wsId}/blog`);
   revalidatePath(`/app/${wsId}/blog/${post.id}`);
 }
+
+// ---------------------------------------------------------------- UGC (short video + carousels)
+export async function findNicheFormats(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'ugc.formats', {}, `ugcfmt:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/content`);
+}
+
+export async function makeUgc(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const formatId = str(form.get('format'));
+  const { data: f } = await sb.from('viral_formats').select('id, kind').eq('id', formatId).maybeSingle();
+  if (!f || (f.kind !== 'video' && f.kind !== 'carousel')) return;
+  await enqueue(sb, wsId, f.kind === 'video' ? 'ugc.video' : 'ugc.carousel', { format_id: f.id, topic: str(form.get('topic'), 300) }, `ugc:${f.id}:${Date.now()}`);
+  redirect(`/app/${wsId}/content?tab=videos`);
+}

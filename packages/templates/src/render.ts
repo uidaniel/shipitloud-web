@@ -16,7 +16,8 @@ const fontDir = (() => {
   }
   throw new Error('Geist fonts not found (is the geist package installed?)');
 })();
-let fonts: { name: string; data: Buffer; weight: 400 | 600 | 700; style: 'normal' }[] | null = null;
+type FontList = { name: string; data: Buffer; weight: 400 | 600 | 700; style: 'normal' }[];
+let fonts: FontList | null = null;
 function loadFonts() {
   return (fonts ??= [
     { name: 'Geist', data: readFileSync(join(fontDir, 'Geist-Regular.ttf')), weight: 400, style: 'normal' },
@@ -25,12 +26,49 @@ function loadFonts() {
   ]);
 }
 
+// ---------------------------------------------------------------- brand fonts
+// The brand's own typeface when it's on Google Fonts (detected from the site's CSS); Geist otherwise.
+const SYSTEM_FONTS = /^(system-ui|-apple-system|blinkmacsystemfont|ui-|sans-serif|serif|monospace|arial|helvetica|segoe ui|roboto mono|geist|inherit|var\()/i;
+const brandFontCache = new Map<string, Promise<FontList | null>>();
+
+export function loadBrandFont(family: string | null | undefined): Promise<FontList | null> {
+  const name = (family ?? '').replace(/["']/g, '').split(',')[0]!.trim();
+  if (!name || SYSTEM_FONTS.test(name) || name.length > 40) return Promise.resolve(null);
+  if (!brandFontCache.has(name)) {
+    brandFontCache.set(name, (async () => {
+      try {
+        // No browser user agent, so Google serves TrueType, which Satori can read.
+        const get = async (url: string, tries = 2): Promise<Response> => {
+          try { return await fetch(url, { signal: AbortSignal.timeout(15_000) }); } catch (e) { if (tries > 1) return get(url, tries - 1); throw e; }
+        };
+        const css = await (await get(`https://fonts.googleapis.com/css2?family=${encodeURIComponent(name).replace(/%20/g, '+')}:wght@400;600;700`)).text();
+        const faces = [...css.matchAll(/font-weight:\s*(\d+);[\s\S]*?src:\s*url\(([^)]+)\)\s*format\('(?:truetype|opentype)'\)/g)];
+        if (!faces.length) return null;
+        const out: FontList = [];
+        for (const [, weight, url] of faces) {
+          const w = Number(weight);
+          if (![400, 600, 700].includes(w)) continue;
+          const data = Buffer.from(await (await get(url!)).arrayBuffer());
+          out.push({ name: 'Geist', data, weight: w as 400 | 600 | 700, style: 'normal' }); // registered under the templates' font name
+        }
+        return out.length ? out : null;
+      } catch { return null; }
+    })());
+  }
+  // Don't remember failures (often a network blip), so the next render tries again.
+  const p = brandFontCache.get(name)!;
+  p.then((f) => { if (!f) brandFontCache.delete(name); });
+  return p;
+}
+
 export interface RenderInput {
   templateId: string;
   format: FormatId;
   slots: Record<string, string>;
   theme: Theme;
   brand: { name: string; url?: string | null; logo?: string | null };
+  /** Use the brand's font (Google Fonts family name) instead of Geist when available. */
+  fontFamily?: string | null;
 }
 
 export interface QaResult {
@@ -66,7 +104,8 @@ export async function renderPng(input: RenderInput): Promise<Buffer> {
   const t = templateById(input.templateId);
   if (!t) throw new Error(`Unknown template ${input.templateId}`);
   const { w, h } = FORMATS[input.format];
-  const svg = await satori(t.render({ slots: input.slots, theme: input.theme, brand: input.brand, w, h }), { width: w, height: h, fonts: loadFonts() });
+  const brandFonts = input.fontFamily ? await loadBrandFont(input.fontFamily) : null;
+  const svg = await satori(t.render({ slots: input.slots, theme: input.theme, brand: input.brand, w, h }), { width: w, height: h, fonts: brandFonts ?? loadFonts() });
   return Buffer.from(new Resvg(svg, { fitTo: { mode: 'width', value: w } }).render().asPng());
 }
 

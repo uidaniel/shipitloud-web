@@ -286,4 +286,72 @@ export const TEMPLATES: Template[] = [
   },
 ];
 
-export const templateById = (id: string) => TEMPLATES.find((t) => t.id === id);
+// ---------------------------------------------------------------- carousel slides (1080x1350)
+// Kept apart from TEMPLATES so poster sets never pick them. Big type, one idea per slide, page counter.
+function Counter({ p }: { p: RenderProps }) {
+  const k = u(p);
+  return s(p, 'page') ? <span style={{ fontSize: 26 * k, color: p.theme.muted, fontWeight: 600 }}>{s(p, 'page')}</span> : <span />;
+}
+
+export const SLIDES: Template[] = [
+  {
+    id: 'slide-cover', name: 'Carousel cover', use: 'First slide: the hook',
+    slots: { title: { label: 'Hook', max: 80, required: true }, kicker: { label: 'Small line above', max: 40 }, page: { label: 'Page', max: 8 } },
+    render: (p) => {
+      const k = u(p);
+      return (
+        <Frame p={p}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><Brand p={p} /><Counter p={p} /></div>
+          <div style={{ display: 'flex', flexDirection: 'column', marginTop: 'auto', marginBottom: 'auto', gap: 28 * k }}>
+            {s(p, 'kicker') ? <span style={{ fontSize: 34 * k, color: p.theme.accent, fontWeight: 600 }}>{s(p, 'kicker')}</span> : null}
+            <span style={{ fontSize: 104 * k, fontWeight: 700, lineHeight: 1.02, letterSpacing: -4 * k }}>{s(p, 'title')}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 * k, fontSize: 30 * k, color: p.theme.muted }}>
+            <span>Swipe</span>
+            <div style={{ display: 'flex', width: 54 * k, height: 54 * k, borderRadius: 999, background: p.theme.accent, color: p.theme.onAccent, alignItems: 'center', justifyContent: 'center', fontSize: 30 * k, fontWeight: 700 }}>→</div>
+          </div>
+        </Frame>
+      );
+    },
+  },
+  {
+    id: 'slide-point', name: 'Carousel point', use: 'One point per slide',
+    slots: { num: { label: 'Number', max: 3 }, title: { label: 'Point', max: 70, required: true }, body: { label: 'Explanation', max: 220 }, page: { label: 'Page', max: 8 } },
+    render: (p) => {
+      const k = u(p);
+      return (
+        <Frame p={p}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 120 * k, fontWeight: 700, color: p.theme.accent, letterSpacing: -4 * k, lineHeight: 1 }}>{s(p, 'num')}</span>
+            <Counter p={p} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 34 * k, marginTop: 'auto', marginBottom: 'auto' }}>
+            <span style={{ fontSize: 76 * k, fontWeight: 700, lineHeight: 1.06, letterSpacing: -2.6 * k }}>{s(p, 'title')}</span>
+            {s(p, 'body') ? <span style={{ fontSize: 40 * k, lineHeight: 1.4, color: p.theme.muted }}>{s(p, 'body')}</span> : null}
+          </div>
+          <Foot p={p} left={p.brand.name} />
+        </Frame>
+      );
+    },
+  },
+  {
+    id: 'slide-end', name: 'Carousel end', use: 'Last slide: the call to action',
+    slots: { title: { label: 'Call to action', max: 60, required: true }, body: { label: 'One line', max: 120 }, page: { label: 'Page', max: 8 } },
+    render: (p) => {
+      const k = u(p);
+      return (
+        <Frame p={p}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Counter p={p} /></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 30 * k, marginTop: 'auto', marginBottom: 'auto', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 92 * k, fontWeight: 700, lineHeight: 1.04, letterSpacing: -3.4 * k }}>{s(p, 'title')}</span>
+            {s(p, 'body') ? <span style={{ fontSize: 40 * k, lineHeight: 1.4, color: p.theme.muted }}>{s(p, 'body')}</span> : null}
+            {host(p.brand.url) ? <div style={{ display: 'flex', marginTop: 16 * k, padding: `${18 * k}px ${34 * k}px`, borderRadius: 999, background: p.theme.accent, color: p.theme.onAccent, fontSize: 38 * k, fontWeight: 600 }}>{host(p.brand.url)}</div> : null}
+          </div>
+          <Brand p={p} />
+        </Frame>
+      );
+    },
+  },
+];
+
+export const templateById = (id: string) => TEMPLATES.find((t) => t.id === id) ?? SLIDES.find((t) => t.id === id);

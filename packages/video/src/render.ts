@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
-import type { DemoProps, VideoFormat } from './types.ts';
+import type { BeatsProps, DemoProps, VideoFormat } from './types.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,8 +26,17 @@ function serveUrl() {
 
 /** Renders one cut to MP4 and returns the bytes. Videos are muted; music is suggested, not baked in. */
 export async function renderVideo(props: DemoProps, format: VideoFormat, opts: { onProgress?: (p: number) => void } = {}): Promise<Buffer> {
+  return renderComposition(`demo-${format}`, props, format, opts);
+}
+
+/** A short-form "beats" video (UGC format remix): 9:16 for Reels/TikTok/Shorts, or 1:1. */
+export function renderBeats(props: BeatsProps, format: 'story' | 'square' = 'story', opts: { onProgress?: (p: number) => void } = {}): Promise<Buffer> {
+  return renderComposition(`beats-${format}`, props, format, opts);
+}
+
+async function renderComposition(id: string, props: Record<string, unknown>, format: VideoFormat, opts: { onProgress?: (p: number) => void }): Promise<Buffer> {
   const url = await serveUrl();
-  const composition = await selectComposition({ serveUrl: url, id: `demo-${format}`, inputProps: props });
+  const composition = await selectComposition({ serveUrl: url, id, inputProps: props });
   const dir = await mkdtemp(path.join(tmpdir(), 'sil-video-'));
   const out = path.join(dir, `${format}.mp4`);
   try {

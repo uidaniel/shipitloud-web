@@ -31,6 +31,10 @@ Everything below is already built in code. Each item is a dashboard setting, acc
 - [ ] Ranking data: connect the Search Console API to fill `blog_posts.rank` (planned with the analytics work).
 - [ ] Custom domains (blog.yourproduct.com): add the domain on Netlify and point a CNAME at it; `blogs.custom_domain` maps it to the right blog.
 
+## Short video (UGC)
+- [ ] `PEXELS_API_KEY` (free at pexels.com/api): turns on stock B-roll in videos. Each clip's licence and attribution are recorded automatically.
+- [ ] Instagram, TikTok and YouTube publishing APIs (Meta app review, TikTok content posting audit, YouTube Data API). Until approved, videos are copy-and-post with downloads.
+
 ## Chrome extension
 - [ ] Build it: `npm run build -w @shipitloud/extension`, which writes `apps/extension/dist`. For local testing against `localhost:3001`, use `build:dev`, then chrome://extensions → Developer mode → Load unpacked.
 - [ ] If the app's production URL changes, update `DEFAULT_API` / `host_permissions` in `apps/extension/build.mjs`.

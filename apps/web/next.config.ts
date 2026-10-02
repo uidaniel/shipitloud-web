@@ -1,6 +1,10 @@
 import type { NextConfig } from 'next';
 import { readFileSync } from 'node:fs';
+import { setDefaultAutoSelectFamilyAttemptTimeout } from 'node:net';
 import path from 'node:path';
+
+// Server-side fetches: give each IPv4/IPv6 connection attempt 3s instead of 250ms (slow links without IPv6).
+setDefaultAutoSelectFamilyAttemptTimeout(3000);
 
 // Monorepo: secrets live in the repo-root .env.local, shared by web and worker.
 // (@next/env caches its first load, so read the root file directly; real env vars win.)

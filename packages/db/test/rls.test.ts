@@ -112,7 +112,8 @@ test('enqueue_job: owner can, others cannot; idempotent on key', () => tx(async 
 test('claim_jobs hands each job to one worker only', () => tx(async () => {
   const ws = await workspaceFor(A);
   await as(null);
-  await client.query(`select enqueue_job($1, 'test'), enqueue_job($1, 'test'), enqueue_job($1, 'test')`, [ws]);
+  // Far-past run_at puts these first in line, so live jobs in the shared database can't interleave.
+  await client.query(`select enqueue_job($1, 'test', '{}', '2000-01-01'), enqueue_job($1, 'test', '{}', '2000-01-01'), enqueue_job($1, 'test', '{}', '2000-01-01')`, [ws]);
   const first = await client.query(`select id from claim_jobs('w1', 2)`);
   const second = await client.query(`select id from claim_jobs('w2', 5) where workspace_id = $1`, [ws]);
   assert.equal(first.rowCount, 2);
