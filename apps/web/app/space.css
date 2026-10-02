@@ -351,7 +351,7 @@ html:has(.space) body { background: transparent; }
 .sp-hero .join-box .btn:hover, .final-space .join-box .btn:hover { background: #b4f02b; }
 @media (max-width: 480px) {
   .sp-hero .join-box, .final-space .join-box { padding-left: 18px; }
-  .sp-hero .join-input, .final-space .join-input { height: 48px; font-size: 15px; }
+  .sp-hero .join-input, .final-space .join-input { height: 48px; font-size: 16px; }
   .sp-hero .join-box .btn, .final-space .join-box .btn { height: 48px; padding: 0 18px; font-size: 15px; }
 }
 .sp-hero .join-meta, .final-space .join-meta { margin-top: 16px; font-size: 14px; color: var(--muted); }
@@ -545,3 +545,6 @@ html:has(.space) body { background: transparent; }
   .fnav-panel.is-in { animation-duration: .62s; }
   .fnav-panel.is-in > * { animation-delay: .18s; }
 }
+
+/* Inputs stay 16px on phones (smaller text makes iOS zoom in on focus). */
+.join-input { font-size: 16px; }
