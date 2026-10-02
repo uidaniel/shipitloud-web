@@ -241,3 +241,68 @@ export async function makePosters(form: FormData) {
   await enqueue(sb, wsId, 'kit.posters', {}, `posters:${wsId}:${Date.now()}`);
   revalidatePath(`/app/${wsId}/kit`);
 }
+
+export async function makeLaunchKit(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'kit.launch', {}, `launch:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}`, 'layout');
+}
+
+export async function runReadinessCheck(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'kit.readiness', {}, `readiness:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/kit`);
+}
+
+export async function toggleTask(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const id = str(form.get('task'));
+  const { sb } = await requireWorkspace(wsId);
+  const { data } = await sb.from('launch_plans').select('tasks').eq('workspace_id', wsId).maybeSingle();
+  if (!data) return;
+  const tasks = (data.tasks as { id: string; done: boolean }[]).map((t) => (t.id === id ? { ...t, done: !t.done } : t));
+  await sb.from('launch_plans').update({ tasks, updated_at: new Date().toISOString() }).eq('workspace_id', wsId);
+  revalidatePath(`/app/${wsId}/plan`);
+}
+
+export async function setDirectory(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const dir = str(form.get('dir'));
+  const status = str(form.get('status'));
+  if (!['todo', 'drafted', 'submitted', 'live', 'rejected'].includes(status)) return;
+  const { sb } = await requireWorkspace(wsId);
+  await sb.from('directory_submissions').upsert({
+    workspace_id: wsId, directory_id: dir, status, updated_at: new Date().toISOString(),
+    ...(status === 'submitted' ? { submitted_at: new Date().toISOString() } : {}),
+  });
+  revalidatePath(`/app/${wsId}/kit`);
+}
+
+const slugify = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+
+export async function savePage(_: unknown, form: FormData): Promise<{ ok?: boolean; error?: string }> {
+  const wsId = str(form.get('ws'));
+  const { sb, ws } = await requireWorkspace(wsId);
+  const slug = slugify(str(form.get('slug'), 60) || ws.product_name);
+  if (slug.length < 3) return { error: 'The page address needs at least 3 letters or numbers.' };
+  if (slug === 'shipitloud') return { error: 'That address is taken.' };
+  const publish = form.get('publish') === 'on';
+  const row = {
+    workspace_id: wsId, slug,
+    headline: str(form.get('headline'), 90) || null,
+    subhead: str(form.get('subhead'), 240) || null,
+    cta: str(form.get('cta'), 30) || 'Join the waitlist',
+    show_badge: ws.plan === 'free' ? true : form.get('show_badge') === 'on',
+    updated_at: new Date().toISOString(),
+  };
+  const { data: existing } = await sb.from('waitlist_pages').select('id, published_at').eq('workspace_id', wsId).maybeSingle();
+  const published_at = publish ? existing?.published_at ?? new Date().toISOString() : null;
+  const res = existing
+    ? await sb.from('waitlist_pages').update({ ...row, published_at }).eq('id', existing.id)
+    : await sb.from('waitlist_pages').insert({ ...row, published_at });
+  if (res.error) return { error: res.error.code === '23505' ? 'That address is taken. Try another.' : 'Couldn’t save. Try again.' };
+  revalidatePath(`/app/${wsId}/waitlist`);
+  return { ok: true };
+}

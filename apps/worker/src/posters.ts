@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BudgetExceededError, POSTERS_SYSTEM, POSTERS_VERSION, PostersSchema, fastModel, generate, mockPosters, postersPrompt } from '@shipitloud/ai';
+import { BudgetExceededError, findUnsupportedClaims, POSTERS_SYSTEM, POSTERS_VERSION, PostersSchema, fastModel, generate, mockPosters, postersPrompt } from '@shipitloud/ai';
 import { FORMATS, TEMPLATES, prepareLogo, qa, renderPng, themeFromPalette, type FormatId } from '@shipitloud/templates';
 import { aiLedger, check, db, enqueue } from './db.ts';
 
@@ -46,6 +46,8 @@ export async function makePosters(workspaceId: string, opts: { templates?: strin
     const slots = Object.fromEntries(poster.slots.map((s) => [s.key, s.value]));
     const brand = { name: ws.product_name, url: ws.url, logo: logo?.dataUri ?? null };
     const check1 = qa({ templateId: tpl.id, format, slots, theme, brand });
+    const facts = [brain.data.one_liner, brain.data.target_customer, ...(brain.data.pain_points ?? []), daysToLaunch != null ? `${daysToLaunch} days` : ''].join(' ');
+    const claimFlags = tpl.id === 'countdown' ? [] : findUnsupportedClaims(Object.values(slots).join(' '), facts);
     if (check1.blocker) { skipped.push(`${tpl.name}: ${check1.issues.join(', ')}`); continue; }
 
     // Plan cap: every rendered image counts.
@@ -61,7 +63,7 @@ export async function makePosters(workspaceId: string, opts: { templates?: strin
     const { data: asset } = await db.from('assets').insert({
       workspace_id: workspaceId, type: 'poster', platform: 'instagram', title: poster.title,
       content: { template: tpl.id, format, slots, qa_issues: check1.issues },
-      file_url: fileUrl, template_id: tpl.id, qa_score: check1.score, publish_score: check1.score, confidence: check1.score,
+      file_url: fileUrl, template_id: tpl.id, qa_score: check1.score, publish_score: check1.score, confidence: claimFlags.length ? 60 : check1.score, flags: claimFlags,
       prompt_version: POSTERS_VERSION, model: out.model,
     }).select('id').single();
     if (asset) await enqueue(workspaceId, 'asset.intake', { asset_id: asset.id }, { key: `intake:${asset.id}` });

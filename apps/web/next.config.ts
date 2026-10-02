@@ -28,7 +28,7 @@ const config: NextConfig = {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? '',
   },
-  transpilePackages: ['@shipitloud/db'],
+  transpilePackages: ['@shipitloud/db', '@shipitloud/templates'],
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

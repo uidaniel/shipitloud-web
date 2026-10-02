@@ -47,13 +47,14 @@ export function Sidebar({ ws, pending, meter, email, notifications, children }: 
     { href: `${base}/activity`, label: 'Activity', icon: Icon.activity },
     { href: `${base}/brand`, label: 'Brand', icon: Icon.brand },
     { href: `${base}/kit`, label: 'Launch kit', icon: Icon.kit },
+    { href: `${base}/plan`, label: 'Launch plan', icon: Icon.plan },
+    { href: `${base}/waitlist`, label: 'Waitlist', icon: Icon.users },
   ];
   const later = [
-    { label: 'Launch plan', icon: Icon.plan },
     { label: 'Listening', icon: Icon.ear },
     { label: 'Analytics', icon: Icon.chart },
   ];
-  const title = path.endsWith('/activity') ? 'Activity' : path.endsWith('/settings') ? 'Settings' : path.endsWith('/brand') ? 'Brand' : path.endsWith('/kit') ? 'Launch kit' : 'Inbox';
+  const title = path.endsWith('/activity') ? 'Activity' : path.endsWith('/settings') ? 'Settings' : path.endsWith('/brand') ? 'Brand' : path.endsWith('/kit') ? 'Launch kit' : path.endsWith('/plan') ? 'Launch plan' : path.endsWith('/waitlist') ? 'Waitlist' : 'Inbox';
 
   return (
     <>

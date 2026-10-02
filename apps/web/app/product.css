@@ -237,3 +237,20 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 .pr-card-b { padding: 12px 14px; display: grid; gap: 8px; }
 .pr-card-b b { font-size: 13px; font-weight: 600; }
 .pr-card-r { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+
+/* task checkbox */
+.pr-check { width: 22px; height: 22px; border-radius: 7px; border: 1.5px solid var(--line-2); background: transparent; color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 700; cursor: pointer; transition: background-color .15s, border-color .15s; padding: 0; }
+.pr-check:hover { border-color: var(--violet-soft); }
+.pr-check[aria-pressed='true'] { background: var(--violet); border-color: var(--violet); }
+
+/* readiness */
+.pr-score-big { font-size: 44px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; }
+.pr-checks { display: grid; }
+.pr-checks > div { display: grid; grid-template-columns: 22px 1fr; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.pr-checks > div:first-child { border-top: 0; }
+.pr-checks b { font-weight: 500; }
+.pr-checks .d { font-size: 13px; color: var(--muted); }
+.pr-checks .f { font-size: 13px; color: var(--text); margin-top: 4px; }
+.pr-dot-ok, .pr-dot-bad { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; margin-top: 1px; }
+.pr-dot-ok { background: var(--ok-bg); color: var(--ok); }
+.pr-dot-bad { background: var(--err-bg); color: var(--err); }

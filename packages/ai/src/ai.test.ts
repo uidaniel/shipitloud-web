@@ -45,3 +45,15 @@ test('budget cap blocks the call before any request is made', async () => {
   if (!prev.key) delete process.env.ANTHROPIC_API_KEY;
   if (!prev.budget) delete process.env.AI_MONTHLY_BUDGET_USD;
 });
+
+import { findUnsupportedClaims } from './claims.ts';
+test('claim checker flags invented numbers and outcome words, allows backed facts', () => {
+  const facts = 'Invoice from WhatsApp, get paid straight to your bank. Naira, dollars or pounds.';
+  const flags = findUnsupportedClaims('Get paid instantly! ₦50k lands next day. 2x faster. 500 freelancers love it.', facts);
+  assert.ok(flags.some((f) => f.includes('instantly')));
+  assert.ok(flags.some((f) => f.includes('₦50k')));
+  assert.ok(flags.some((f) => f.includes('next day')));
+  assert.ok(flags.some((f) => f.includes('2x')));
+  assert.ok(flags.some((f) => f.includes('500 freelancers')));
+  assert.deepEqual(findUnsupportedClaims('Invoice from WhatsApp, get paid straight to your bank.', facts), []);
+});

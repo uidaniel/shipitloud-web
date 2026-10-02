@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { site } from '@/lib/site';
 import { getWaitlistStore } from '@/lib/waitlist';
+import { consentFor, getPublicPage, isSlug } from '@/lib/pages';
 import {
   hashIp,
   isDisposable,
@@ -41,6 +42,16 @@ export async function POST(req: NextRequest) {
   if (isDisposable(email)) return bad('Please use a permanent email address.');
   if (body.consent !== true) return bad('Tick the box so we can email you at launch.');
 
+  // Which waitlist: ShipItLoud's own, or a founder's hosted page (must be published).
+  let pageSlug: string = site.waitlistSlug;
+  let consentText: string = site.consentText;
+  if (isSlug(body.page) && body.page !== site.waitlistSlug) {
+    const page = await getPublicPage(body.page);
+    if (!page || !page.published) return bad('This waitlist isn’t open.', 404);
+    pageSlug = page.slug;
+    consentText = consentFor(page.name);
+  }
+
   const ref = isReferralCode(body.ref) ? body.ref : null;
   let referrerHost: string | null = null;
   const referrer = str(body.referrer, 500);
@@ -53,11 +64,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await getWaitlistStore().join({
-      pageSlug: site.waitlistSlug,
+      pageSlug,
       email,
       emailNormalized: normalizeEmail(email),
       consent: true,
-      consentText: site.consentText,
+      consentText,
       code: makeReferralCode(),
       refCode: ref,
       productUrl: normalizeProductUrl(body.productUrl),

@@ -3,6 +3,8 @@ import { actionsRepo, check, db, enqueue } from './db.ts';
 import { appUrl } from './env.ts';
 import { buildBrand } from './brand.ts';
 import { makePosters } from './posters.ts';
+import { PlanLimitError, makeLaunchPlan, makeLaunchPosts } from './launch.ts';
+import { runReadiness } from './readiness.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
 
@@ -45,6 +47,30 @@ export const handlers: Record<string, Handler> = {
     if (!job.workspace_id) throw new Error('kit.posters needs a workspace');
     const r = await makePosters(job.workspace_id, { templates: Array.isArray(p.templates) ? (p.templates as string[]) : undefined });
     if (r.made) await notifyOwner(job.workspace_id, 'kit_ready', `${r.made} posters are ready for you`, 'Approve the ones you like.', `${appUrl()}/app/${job.workspace_id}/inbox`);
+  },
+
+  /** Launch posts for every channel, then the 30-day plan linked to them. */
+  async 'kit.launch'(_p, job) {
+    const ws = job.workspace_id!;
+    try {
+      const n = await makeLaunchPosts(ws);
+      await makeLaunchPlan(ws);
+      await notifyOwner(ws, 'kit_ready', `Your launch posts and 30-day plan are ready`, `${n} drafts are waiting for your OK.`, `${appUrl()}/app/${ws}/plan`);
+    } catch (err) {
+      if (err instanceof PlanLimitError) { await notifyOwner(ws, 'cap_reached', 'Plan limit reached', err.message, `${appUrl()}/pricing`); return; }
+      throw err;
+    }
+  },
+
+  async 'kit.readiness'(_p, job) {
+    const ws = job.workspace_id!;
+    const { data } = await db.from('workspaces').select('url').eq('id', ws).single();
+    if (!data?.url) throw new Error('Add your site link in Settings first.');
+    await runReadiness(ws, data.url);
+  },
+
+  async 'kit.plan'(_p, job) {
+    await makeLaunchPlan(job.workspace_id!);
   },
 
   /** Onboarding: crawl the site and draft the brand brain. */

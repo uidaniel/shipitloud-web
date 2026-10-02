@@ -1,0 +1,39 @@
+/* Hosted waitlist pages. Themed per brand through CSS variables set on .wp. Mobile-first. */
+.wp { --bg: #0d0d12; --fg: #f7f7f4; --muted: #a3a3b1; --accent: #5b3df5; --on-accent: #fff;
+  min-height: 100svh; background: var(--bg); color: var(--fg); font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  display: flex; flex-direction: column; }
+html:has(.wp), html:has(.wp) body { background: var(--wp-bg, #0d0d12); }
+.wp-in { width: 100%; max-width: 560px; margin: 0 auto; padding: 28px 20px; flex: 1; display: flex; flex-direction: column; }
+.wp-brand { display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 17px; letter-spacing: -0.02em; }
+.wp-brand img { width: 40px; height: 40px; border-radius: 10px; object-fit: contain; background: rgba(255,255,255,.06); }
+.wp-main { margin: auto 0; padding: 48px 0; }
+.wp h1 { margin: 0; font-size: clamp(36px, 9vw, 54px); line-height: 1.03; letter-spacing: -0.045em; font-weight: 700; text-wrap: balance; }
+.wp-sub { margin: 18px 0 0; font-size: 17px; line-height: 1.55; color: var(--muted); }
+.wp-form { margin-top: 30px; display: grid; gap: 12px; }
+.wp-row { display: flex; gap: 8px; padding: 6px; border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); }
+.wp-row:focus-within { border-color: var(--accent); }
+.wp-row input { flex: 1; min-width: 0; height: 48px; padding: 0 12px; border: 0; background: transparent; color: var(--fg); font: inherit; font-size: 16px; outline: none; }
+.wp-row input::placeholder { color: var(--muted); }
+.wp-btn { height: 48px; padding: 0 20px; border: 0; border-radius: 10px; background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; font-size: 15px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; }
+.wp-btn[disabled] { opacity: .7; cursor: progress; }
+.wp-consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: var(--muted); cursor: pointer; }
+.wp-consent input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
+.wp-error { margin: 0; font-size: 14px; color: #f87171; }
+.wp-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); padding-top: 16px; }
+.wp-foot a { color: inherit; }
+.wp-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); text-decoration: none; font-weight: 500; }
+.wp-badge b { font-weight: 600; color: var(--fg); }
+.wp-place { font-size: clamp(72px, 22vw, 120px); font-weight: 700; letter-spacing: -0.05em; line-height: 1; margin: 12px 0 0; }
+.wp-of { color: var(--muted); font-size: 15px; margin-top: 6px; }
+.wp-share { margin-top: 28px; display: grid; gap: 10px; }
+.wp-link { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 14px; border-radius: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); }
+.wp-link code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-family: inherit; }
+.wp-share-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.wp-ghost { height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.18); color: var(--fg); text-decoration: none; display: inline-flex; align-items: center; font-size: 14px; font-weight: 500; }
+.spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: wpspin .7s linear infinite; }
+@keyframes wpspin { to { transform: rotate(360deg); } }
+
+/* Grids never grow past the screen. */
+.wp-main { width: 100%; min-width: 0; }
+.wp-form, .wp-share { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 420px) { .wp-btn { padding: 0 14px; } }

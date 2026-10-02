@@ -19,5 +19,9 @@
   "devDependencies": {
     "@types/react": "^19",
     "tsx": "^4.23.15"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./color": "./src/color.ts"
   }
 }
