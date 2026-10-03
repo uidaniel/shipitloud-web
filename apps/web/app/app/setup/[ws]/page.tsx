@@ -1,4 +1,7 @@
 import type { Metadata } from 'next';
+import { PlatformIcon, type Platform } from '@/components/space/platform-icons';
+import { PostCard, PlatformMark, handleOf } from '@/components/app/post-card';
+import { Icon } from '@/components/app/icons';
 import Link from 'next/link';
 import { requireWorkspace } from '@/lib/supabase/server';
 import { LogoIcon } from '@/components/logo';
@@ -17,6 +20,7 @@ export const metadata: Metadata = { title: 'Set up' };
 // PRD section 23: paste URL → understand → summary → growth analysis → channel plan → connect → first wins → plan live.
 const STEPS = ['understand', 'questions', 'summary', 'analysis', 'channels', 'connect', 'wins', 'live'] as const;
 type Step = (typeof STEPS)[number];
+const ICONS = { x: 1, linkedin: 1, instagram: 1, tiktok: 1, github: 1, reddit: 1, bluesky: 1 };
 const ACCOUNT: Record<string, { name: string; note: string; href?: string }> = {
   x: { name: 'X', note: 'Post your updates and threads.' },
   linkedin: { name: 'LinkedIn', note: 'Post as you, where business buyers are.' },
@@ -36,7 +40,7 @@ function Frame({ ws, step, wide, xwide, children }: { ws: string; step: Step; wi
       <div className="pr-onb-card" style={{ maxWidth: xwide ? 1180 : wide ? 820 : 560 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
           <LogoIcon size={34} />
-          <Link href={`/app/${ws}/inbox`} className="pr-btn pr-btn-ghost pr-btn-sm">Skip setup</Link>
+          <Link href={`/app/${ws}`} className="pr-btn pr-btn-ghost pr-btn-sm">Skip setup</Link>
         </div>
         <div className="pr-steps" aria-label={`Step ${i + 1} of ${STEPS.length}`}>{STEPS.map((s, j) => <i key={s} className={j <= i ? 'on' : ''} />)}</div>
         {children}
@@ -137,7 +141,7 @@ export default async function Setup({ params, searchParams }: { params: Promise<
       <Frame ws={id} step="analysis" wide>
         <h1>Where your users will come from</h1>
         <p className="sub">Our read of {ws.product_name}, and the fastest ways to get users.</p>
-        <AnalysisView a={a} />
+        <AnalysisView a={a} brief />
         <Next ws={id} step="analysis" label="Continue" />
       </Frame>
     );
@@ -182,7 +186,8 @@ export default async function Setup({ params, searchParams }: { params: Promise<
             const acct = ACCOUNT[n] ?? { name: n, note: '' };
             return (
               <li key={n}>
-                <div><b>{acct.name}</b><small>{acct.note}</small></div>
+                <span className="pr-connect-ic">{n in ICONS ? <PlatformIcon name={n as Platform} size={36} /> : null}</span>
+                <div style={{ flex: 1, minWidth: 0 }}><b>{acct.name}</b><small>{acct.note}</small></div>
                 {acct.href ? <Link className="pr-btn pr-btn-sm" href={`/app/${id}/${acct.href}`} target="_blank">Set up</Link>
                   : <span className="pr-chip" title="One-click connect arrives when the platform approves our app">Copy and post for now</span>}
               </li>
@@ -196,12 +201,13 @@ export default async function Setup({ params, searchParams }: { params: Promise<
 
   // ---- first wins: warm leads, first week, launch messages
   if (step === 'wins') {
-    const [{ data: drafts }, { count: leads }, { data: jobs }, { data: kit }, { data: page }] = await Promise.all([
+    const [{ data: drafts }, { count: leads }, { data: jobs }, { data: kit }, { data: page }, { data: brand }] = await Promise.all([
       sb.from('assets').select('id, title, type, platform, content').eq('workspace_id', id).eq('status', 'pending').in('type', ['post', 'reply']).order('created_at').limit(6),
       sb.from('mentions').select('id', { count: 'exact', head: true }).eq('workspace_id', id).gte('score', 60),
       sb.from('jobs').select('type').eq('workspace_id', id).in('type', ['listen.poll', 'content.week', 'kit.network', 'kit.plan', 'listen.draft']).in('status', ['queued', 'running']),
       sb.from('network_kits').select('workspace_id').eq('workspace_id', id).maybeSingle(),
       sb.from('waitlist_pages').select('slug').eq('workspace_id', id).maybeSingle(),
+      sb.from('brand_kits').select('logo_url').eq('workspace_id', id).maybeSingle(),
     ]);
     const busy = (jobs?.length ?? 0) > 0;
     const working = (t: string) => jobs?.some((j) => j.type === t);
@@ -218,12 +224,9 @@ export default async function Setup({ params, searchParams }: { params: Promise<
         </div>
         <h3 className="pr-onb-h3">Your first posts and replies</h3>
         {drafts?.length ? (
-          <ul className="pr-firsts">
+          <ul className="post-grid">
             {drafts.map((d) => (
-              <li key={d.id} className="pr-fade-in">
-                <div><small>{d.type === 'reply' ? 'Reply' : 'Post'} · {d.platform}</small><p>{String((d.content as { text?: string }).text ?? d.title).slice(0, 240)}</p></div>
-                <form action={decide}><input type="hidden" name="ws" value={id} /><input type="hidden" name="asset" value={d.id} /><input type="hidden" name="decision" value="approve" /><Submit className="pr-btn pr-btn-sm pr-btn-primary" pending="…">Approve</Submit></form>
-              </li>
+              <PostCard key={d.id} ws={id} id={d.id} name={ws.product_name} handle={handleOf(ws.url, ws.product_name)} logo={brand?.logo_url ?? null} platform={d.platform} type={d.type} text={String((d.content as { text?: string }).text ?? d.title)} />
             ))}
           </ul>
         ) : busy ? (
@@ -237,20 +240,31 @@ export default async function Setup({ params, searchParams }: { params: Promise<
   // ---- plan live: what happens this week
   const startedAt = (prog ?? []).find((p) => p.step === 'paste')?.completed_at ?? (prog ?? [])[0]?.started_at;
   const took = startedAt ? (Date.now() - Date.parse(startedAt)) / 1000 : null;
-  const on = channels.filter((c) => c.enabled).map((c) => c.name);
+  const chans = channels.filter((c) => c.enabled).slice(0, 8);
   return (
     <Frame ws={id} step="live" wide>
-      <h1>Your plan is live</h1>
-      <p className="sub">{took && took < 3600 ? `Set up in ${fmt(took)}. ` : ''}Here’s what happens this week.</p>
-      <ul className="pr-week">
-        <li><b>Every 20 minutes</b><span>We look for people asking for what you built and draft replies for you to approve.</span></li>
-        <li><b>This week</b><span>Your first posts go out once you approve them, on: {on.slice(0, 4).join(', ')}{on.length > 4 ? ` and ${on.length - 4} more` : ''}.</span></li>
-        <li><b>Sunday</b><span>We plan next week’s posts from what you shipped and what people are asking.</span></li>
-        <li><b>Monday</b><span>Your weekly digest: what worked, and the next three things to do.</span></li>
-      </ul>
-      <div className="pr-onb-next" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <form action={setupNext}><input type="hidden" name="ws" value={id} /><input type="hidden" name="step" value="live" /><Submit className="pr-btn pr-btn-primary pr-btn-lg" pending="…">See my 30-day plan</Submit></form>
-        <Link className="pr-btn pr-btn-lg" href={`/app/${id}/analytics`}>Momentum</Link>
+      <div className="live-hero">
+        <div className="live-badge" aria-hidden="true">
+          <span className="live-burst">{Array.from({ length: 10 }, (_, i) => <i key={i} style={{ ['--a' as string]: `${i * 36}deg` }} />)}</span>
+          <span className="live-check">{Icon.check}</span>
+        </div>
+        <h1>You’re live.</h1>
+        <p className="sub">{took && took < 3600 ? `Set up in ${fmt(took)}. ` : ''}From here, {ws.product_name} grows while you build. Here’s what happens next.</p>
+        {chans.length > 0 && (
+          <div className="live-chans" aria-label="Your channels">
+            {chans.map((c) => <span key={c.id} className="live-chan">{c.connect ? <PlatformMark platform={c.connect} size={20} /> : <i className="dot" />}{c.name}</span>)}
+          </div>
+        )}
+      </div>
+      <ol className="live-time">
+        <li className="on"><span className="ic">{Icon.ear}</span><div><b>Every 20 minutes <em><i />Running now</em></b><p>We look for people asking for what you built and draft replies for you to approve.</p></div></li>
+        <li><span className="ic">{Icon.pen}</span><div><b>This week</b><p>Your first posts go out as soon as you approve them.</p></div></li>
+        <li><span className="ic">{Icon.plan}</span><div><b>Every Sunday</b><p>We plan next week’s posts from what you shipped and what people are asking.</p></div></li>
+        <li><span className="ic">{Icon.chart}</span><div><b>Every Monday</b><p>Your weekly digest: what worked, and the next three things to do.</p></div></li>
+      </ol>
+      <div className="live-cta">
+        <form action={setupNext}><input type="hidden" name="ws" value={id} /><input type="hidden" name="step" value="live" /><Submit className="live-go" pending="Opening…">Go to my home {Icon.arrow}</Submit></form>
+        <Link className="live-alt" href={`/app/${id}/plan`}>See my 30-day plan</Link>
       </div>
     </Frame>
   );

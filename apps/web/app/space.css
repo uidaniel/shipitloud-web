@@ -1076,3 +1076,31 @@ html:has(.space) body { background: transparent; }
   .az-core { width: 76px; height: 76px; }
   .az-orbit { right: calc(12% + 38px); bottom: calc(14% + 38px); }
 }
+
+/* analysing scene: product planet, radar sweep, platforms in orbit */
+.az2 { position: relative; width: min(460px, 100%); aspect-ratio: 1; margin: 0 auto; }
+.az2-glow { position: absolute; inset: 14%; border-radius: 50%; background: radial-gradient(closest-side, rgba(91,61,245,.45), rgba(91,61,245,.08) 70%, transparent); filter: blur(14px); }
+.az2-rings { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.az2-rings circle { fill: none; stroke: rgba(245,245,242,.09); stroke-width: 1; stroke-dasharray: 2 6; }
+.az2-rings circle:nth-child(2) { stroke: rgba(245,245,242,.12); stroke-dasharray: none; }
+.az2-sweep { position: absolute; inset: 2.3%; border-radius: 50%; background: conic-gradient(from 0deg, rgba(198,255,61,.0) 0deg, rgba(198,255,61,.0) 300deg, rgba(198,255,61,.16) 350deg, rgba(198,255,61,.42) 360deg); -webkit-mask: radial-gradient(closest-side, transparent 22%, #000 23%); mask: radial-gradient(closest-side, transparent 22%, #000 23%); }
+.az2-orbit { position: absolute; left: 50%; top: 50%; width: var(--d); aspect-ratio: 1; transform: translate(-50%, -50%) rotate(var(--a)); }
+.az2-logo { position: absolute; left: 50%; top: 0; display: grid; padding: 5px; border-radius: 12px; background: rgba(16,16,24,.85); border: 1px solid rgba(245,245,242,.14); box-shadow: 0 8px 24px rgba(0,0,0,.45); transform: translate(-50%, -50%) rotate(calc(-1 * var(--a))); }
+.az2-planet { position: absolute; left: 50%; top: 50%; width: 27%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 32% 28%, #b9a9ff, #6a4dff 45%, #2a1d8a 80%); box-shadow: inset -14px -18px 30px rgba(10,6,40,.55), 0 0 0 12px rgba(91,61,245,.1), 0 0 80px rgba(91,61,245,.55); }
+.az2-planet::after { content: ''; position: absolute; inset: -18%; border-radius: 50%; border: 1px solid rgba(198,255,61,.35); }
+.az2-face { width: 46%; aspect-ratio: 1; border-radius: 26%; display: grid; place-items: center; background: #fff; box-shadow: 0 6px 18px rgba(10,6,40,.4); overflow: hidden; }
+.az2-face img { width: 72%; height: 72%; object-fit: contain; }
+.az2-face b { font-size: clamp(18px, 3vw, 26px); font-weight: 700; color: #5b3df5; }
+.az2-card { position: absolute; left: 50%; bottom: -2%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 999px; background: rgba(16,16,24,.9); border: 1px solid rgba(245,245,242,.14); box-shadow: 0 12px 40px rgba(0,0,0,.5); font-size: 14px; color: var(--paper); white-space: nowrap; backdrop-filter: blur(8px); }
+@media (prefers-reduced-motion: no-preference) {
+  .az2-sweep { animation: az-rot 4.5s linear infinite; }
+  .az2-orbit { animation: az2-spin var(--t) linear infinite; }
+  .az2-logo { animation: az2-unspin var(--t) linear infinite; }
+  .az2-planet { animation: az2-breathe 4s ease-in-out infinite; }
+  .az2-card { animation: az2-card .45s cubic-bezier(.2,.9,.3,1.2) both; }
+}
+@keyframes az2-spin { from { transform: translate(-50%, -50%) rotate(var(--a)); } to { transform: translate(-50%, -50%) rotate(calc(var(--a) + 360deg)); } }
+@keyframes az2-unspin { from { transform: translate(-50%, -50%) rotate(calc(-1 * var(--a))); } to { transform: translate(-50%, -50%) rotate(calc(-1 * var(--a) - 360deg)); } }
+@keyframes az2-breathe { 50% { box-shadow: inset -14px -18px 30px rgba(10,6,40,.55), 0 0 0 18px rgba(91,61,245,.06), 0 0 110px rgba(91,61,245,.7); } }
+@keyframes az2-card { from { opacity: 0; transform: translate(-50%, 8px) scale(.96); } }
+@media (max-width: 900px) { .az-stage { height: auto; } .az2 { width: min(340px, 86vw); margin-bottom: 18px; } .az2-card { font-size: 13px; } }

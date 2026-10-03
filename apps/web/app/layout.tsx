@@ -3,6 +3,7 @@ import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import { Inter } from 'next/font/google';
 import { site } from '@/lib/site';
+import { TopProgress } from '@/components/top-progress';
 import './globals.css';
 
 // Stand-in for Apple's SF Pro inside the MacBook mockup on non-Apple devices.
@@ -23,7 +24,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${inter.variable}`}>
-      <body>{children}</body>
+      <body><TopProgress />{children}</body>
     </html>
   );
 }

@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { requireWorkspace } from '@/lib/supabase/server';
 import { Sidebar } from './sidebar';
 
@@ -13,6 +14,7 @@ export default async function WorkspaceLayout({ children, params }: { children: 
     sb.from('notifications').select('id, title, body, url, read_at, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(15),
   ]);
 
+  const mini = (await cookies()).get('sil_side')?.value === 'mini';
   const cap = (m: string) => limits.data?.find((l) => l.metric === m)?.monthly_cap ?? null;
   const meter = (['ai_drafts', 'images', 'videos'] as const).map((m) => ({
     label: m === 'ai_drafts' ? 'AI drafts' : m === 'images' ? 'Images' : 'Videos',
@@ -21,16 +23,15 @@ export default async function WorkspaceLayout({ children, params }: { children: 
   }));
 
   return (
-    <div className="pr-shell">
-      <Sidebar
-        ws={{ id, name: ws.product_name, plan: ws.plan }}
+    <Sidebar
+        ws={{ id, name: ws.product_name, plan: ws.plan, fit: ws.fit }}
         pending={pending.count ?? 0}
         meter={meter}
         email={user.email ?? ''}
         notifications={notes.data ?? []}
+        mini={mini}
       >
         {children}
       </Sidebar>
-    </div>
   );
 }

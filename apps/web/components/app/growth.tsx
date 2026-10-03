@@ -31,7 +31,9 @@ function Ring({ score }: { score: number }) {
   );
 }
 
-export function AnalysisView({ a }: { a: Analysis }) {
+export function AnalysisView({ a, brief }: { a: Analysis; brief?: boolean }) {
+  // brief (setup): the score and the 3 opportunities up front, everything else one tap away.
+  const Rest = brief ? ({ children }: { children: React.ReactNode }) => <details className="pr-more pr-more-big"><summary>See the full analysis</summary><div className="pr-growth" style={{ marginTop: 18 }}>{children}</div></details> : ({ children }: { children: React.ReactNode }) => <>{children}</>;
   return (
     <div className="pr-growth">
       <section className="pr-growth-hero">
@@ -48,6 +50,7 @@ export function AnalysisView({ a }: { a: Analysis }) {
         <ol className="pr-opps">{a.opportunities.map((o, i) => <li key={o.title}><span className="n">{i + 1}</span><div><b>{o.title}</b><p>{o.why}</p></div></li>)}</ol>
       </section>
 
+      <Rest>
       <div className="pr-grid-2" style={{ alignItems: 'start' }}>
         <section>
           <h3>Who signs up first</h3>
@@ -96,6 +99,7 @@ export function AnalysisView({ a }: { a: Analysis }) {
         <summary>How the score is worked out</summary>
         <ul className="pr-score-parts">{a.score_parts.map((p) => <li key={p.label}><span>{p.label}</span><span className="bar"><i style={{ width: `${(p.got / p.of) * 100}%` }} /></span><b>{p.got}/{p.of}</b>{p.got < p.of && <small>{p.tip}</small>}</li>)}</ul>
       </details>
+      </Rest>
     </div>
   );
 }

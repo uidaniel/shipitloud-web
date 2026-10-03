@@ -332,3 +332,7 @@ button, input { font: inherit; color: inherit; }
   100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--d)); }
 }
 @media (prefers-reduced-motion: reduce) { .comets { display: none; } }
+
+/* page-load bar across the top of every page */
+.top-progress { position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 9999; pointer-events: none; transition: opacity .3s ease; }
+.top-progress i { display: block; height: 100%; background: linear-gradient(90deg, #5b3df5, #8b6dff 55%, #c6ff3d); box-shadow: 0 0 10px rgba(198, 255, 61, .6), 0 0 4px rgba(91, 61, 245, .7); border-radius: 0 2px 2px 0; transition: width .2s ease; }

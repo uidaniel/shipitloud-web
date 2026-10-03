@@ -930,7 +930,7 @@ export async function setupNext(form: FormData) {
   if (!step) return;
   const { next } = await stepDone(sb, wsId, step);
   if (step === 'connect') await enqueue(sb, wsId, 'setup.wins', {}, `wins:${wsId}`);
-  redirect(next ? `/app/setup/${wsId}?step=${next}` : `/app/${wsId}/plan`);
+  redirect(next ? `/app/setup/${wsId}?step=${next}` : `/app/${wsId}`);
 }
 
 /** Accept the channel plan, with the founder's toggles. */
