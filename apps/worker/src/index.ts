@@ -11,8 +11,11 @@ let stopping = false;
 
 interface Job { id: string; workspace_id: string | null; type: string; payload: Record<string, unknown>; attempts: number; max_attempts: number; created_at: string }
 
-async function runBatch(): Promise<number> {
-  const jobs = check(await db.rpc('claim_jobs', { p_worker: WORKER, p_limit: 5 }), 'claim_jobs') as Job[];
+// Slow jobs get their own lane so a 7-minute video render never delays a 15-second analysis.
+const HEAVY = ['kit.video', 'ugc.video', 'ugc.carousel', 'kit.readiness'];
+
+async function runBatch(lane: 'fast' | 'heavy'): Promise<number> {
+  const jobs = check(await db.rpc('claim_jobs_lane', { p_worker: WORKER, p_limit: lane === 'heavy' ? 1 : 5, p_types: HEAVY, p_only: lane === 'heavy' }), 'claim_jobs') as Job[];
   for (const job of jobs) {
     const handler = handlers[job.type];
     if (!handler) {
@@ -44,18 +47,23 @@ async function runBatch(): Promise<number> {
   return jobs.length;
 }
 
-async function main() {
-  console.log(`[worker] ${WORKER} started${once ? ' (once)' : ''}`);
+async function loop(lane: 'fast' | 'heavy') {
   let lastTick = 0;
   while (!stopping) {
-    if (Date.now() - lastTick > 60_000) {
+    // Housekeeping runs on the fast lane only.
+    if (lane === 'fast' && Date.now() - lastTick > 60_000) {
       lastTick = Date.now();
       await tick().catch((e) => console.error('[tick]', e instanceof Error ? e.message : e));
     }
-    const n = await runBatch().catch((e) => { console.error('[batch]', e instanceof Error ? e.message : e); return 0; });
+    const n = await runBatch(lane).catch((e) => { console.error(`[batch:${lane}]`, e instanceof Error ? e.message : e); return 0; });
     if (once && n === 0) break;
-    if (n === 0) await new Promise((r) => setTimeout(r, 2000));
+    if (n === 0) await new Promise((r) => setTimeout(r, lane === 'heavy' ? 4000 : 2000));
   }
+}
+
+async function main() {
+  console.log(`[worker] ${WORKER} started${once ? ' (once)' : ''}`);
+  await Promise.all([loop('fast'), loop('heavy')]);
   console.log('[worker] stopped');
 }
 

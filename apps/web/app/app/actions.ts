@@ -964,3 +964,49 @@ export async function saveChannels(form: FormData) {
   await sb.from('channel_plans').update({ channels, accepted_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('workspace_id', wsId);
   revalidatePath(`/app/${wsId}/growth`);
 }
+
+// ---------------------------------------------------------------- app links: 3 quick questions, website, recording
+/** Save the 3 quick answers (and an optional website), then refresh the analysis with them. */
+export async function saveSetupAnswers(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb, ws } = await requireWorkspace(wsId);
+  const pick = (k: string) => { const other = str(form.get(`${k}_other`), 120); return other || str(form.get(k), 120) || undefined; };
+  const answers = { who: pick('who'), does: pick('does'), different: pick('different') };
+  const { isStoreUrl, parseStoreUrl } = await import('@shipitloud/engine');
+  const rawSite = str(form.get('website'), 300);
+  const website = rawSite ? normalizeUrl(rawSite) : null;
+  const patch: Record<string, unknown> = { setup_answers: answers };
+  // An app with a website: the website becomes the product link, the store link is kept as the app link.
+  if (website && isStoreUrl(ws.url)) {
+    const ref = parseStoreUrl(ws.url!)!;
+    patch.app_links = { [ref.store]: ws.url };
+    patch.url = website;
+  }
+  await sb.from('workspaces').update(patch).eq('id', wsId);
+  if (answers.who) await sb.from('brand_brains').update({ target_customer: answers.who }).eq('workspace_id', wsId);
+  await sb.rpc('setup_step', { p_ws: wsId, p_step: 'questions', p_done: true });
+  // Show "getting to know you" right away: the refreshed analysis row exists before the redirect.
+  const { data: row } = await supabaseAdmin().from('growth_analyses').insert({ workspace_id: wsId, url: (patch.url as string) ?? ws.url, status: 'running' }).select('id').single();
+  await enqueue(sb, wsId, 'setup.analyze', { analysis_id: row?.id }, `setup:${wsId}:answers:${Date.now()}`);
+  redirect(`/app/setup/${wsId}`);
+}
+
+/** A one-time link the browser uploads the screen recording to directly (too big for a normal form post). */
+export async function startRecordingUpload(ws: string, type: string, size: number) {
+  await requireWorkspace(ws);
+  const ext = ({ 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm' } as Record<string, string>)[type];
+  if (!ext) return { error: 'Use an MP4, MOV or WebM video.' };
+  if (size > 100_000_000) return { error: 'Keep it under 100 MB (30 to 60 seconds is plenty).' };
+  const path = `${ws}/recordings/${Date.now()}.${ext}`;
+  const { data, error } = await supabaseAdmin().storage.from('assets').createSignedUploadUrl(path);
+  if (error || !data) return { error: 'Couldn’t start the upload. Try again.' };
+  return { path, token: data.token };
+}
+
+export async function saveRecording(ws: string, path: string, seconds: number) {
+  await requireWorkspace(ws);
+  if (!path.startsWith(`${ws}/recordings/`)) return;
+  const url = supabaseAdmin().storage.from('assets').getPublicUrl(path).data.publicUrl;
+  await supabaseAdmin().from('brand_kits').upsert({ workspace_id: ws, recording: { url, path, seconds: Math.round(Math.max(1, Math.min(600, seconds)) * 10) / 10 }, updated_at: new Date().toISOString() });
+  revalidatePath(`/app/setup/${ws}`);
+}

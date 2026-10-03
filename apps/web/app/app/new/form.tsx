@@ -17,8 +17,8 @@ export function NewWorkspaceForm({ url = '' }: { url?: string }) {
         </div>
       </fieldset>
       <div>
-        <label className="pr-label" htmlFor="url">Product link</label>
-        <input id="url" name="url" className="pr-input" placeholder="yourproduct.com" inputMode="url" autoComplete="url" defaultValue={kept(state, 'url', url)} style={{ height: 44, fontSize: 15 }} />
+        <label className="pr-label" htmlFor="url">Website, App Store or Google Play link</label>
+        <input id="url" name="url" className="pr-input" placeholder="yourproduct.com or an app store link" inputMode="url" autoComplete="url" defaultValue={kept(state, 'url', url)} style={{ height: 44, fontSize: 15 }} />
       </div>
       <div>
         <label className="pr-label" htmlFor="product_name">Product name</label>

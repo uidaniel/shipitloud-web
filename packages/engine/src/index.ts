@@ -12,3 +12,4 @@ export * from './page-audit.ts';
 export * from './lifecycle.ts';
 export * from './ads.ts';
 export * from './growth.ts';
+export * from './appstore.ts';

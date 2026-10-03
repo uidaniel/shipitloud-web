@@ -2,7 +2,7 @@
 // will come from. Channel plan and score are worked out in code from these answers.
 import { z } from 'zod';
 
-export const GROWTH_VERSION = 'growth_analysis@2';
+export const GROWTH_VERSION = 'growth_analysis@3';
 
 export const GrowthSchema = z.object({
   summary: z.string().describe('What it does, in 1-2 plain sentences'),
@@ -11,21 +11,36 @@ export const GrowthSchema = z.object({
   stage: z.enum(['pre_launch', 'just_launched', 'growing']).describe('pre_launch if the site is a waitlist or "coming soon"; growing only if the site shows real traction'),
   pricing_model: z.string().describe('One of: free, freemium, free trial, subscription, one-time, usage-based, unknown'),
   ideal_customer: z.string().describe('The specific person most likely to sign up first, one sentence'),
-  hangouts: z.array(z.string()).min(2).max(5).describe('Specific places that person spends time online, e.g. "r/freelance", "Indie Hackers", "LinkedIn", "Nigerian tech Twitter"'),
+  hangouts: z.array(z.string()).describe('Specific places that person spends time online, e.g. "r/freelance", "Indie Hackers", "LinkedIn", "Nigerian tech Twitter"'),
   positioning: z.string().describe('One line: for [who], [product] is the [category] that [key benefit], unlike [main alternative]. Under 30 words.'),
   competitor_gaps: z.array(z.object({
     competitor: z.string(),
     how_they_market: z.string().describe('How this competitor is generally known to get users, one short sentence. If you are not sure, say "Not sure".'),
     gap: z.string().describe('An opening this product can use, one sentence'),
-  })).max(4),
+  })),
   page_fixes: z.array(z.object({
     area: z.enum(['clarity', 'cta', 'trust']),
     fix: z.string().describe('What to change, concretely, one sentence'),
     why: z.string().describe('Why it gets more signups, one short sentence'),
-  })).length(3).describe('The top 3 landing page fixes, one for each area'),
-  opportunities: z.array(z.object({ title: z.string().describe('Under 8 words'), why: z.string().describe('One sentence, specific to this product') })).length(3).describe('The 3 biggest ways to get users soon'),
-  search_phrases: z.array(z.string()).min(2).max(4).describe('2-4 short phrases (2-3 words) people write in forums when they have this problem or need this kind of product, e.g. "invoice app", "chasing payments"'),
+  })).describe('The top 3 landing page fixes, one for each area'),
+  opportunities: z.array(z.object({ title: z.string().describe('Under 8 words'), why: z.string().describe('One sentence, specific to this product') })).describe('The 3 biggest ways to get users soon'),
+  search_phrases: z.array(z.string()).describe('2-4 short phrases (2-3 words) people write in forums when they have this problem or need this kind of product, e.g. "invoice app", "chasing payments"'),
   sample_post: z.string().describe('One launch post the founder could publish today, in the voice the site uses, under 260 characters, no hashtags, no emoji, only facts from the site'),
+  questions: z.object({
+    who: z.array(z.string()).describe('2-3 short, specific guesses at who it is for, e.g. "Freelance designers"'),
+    does: z.array(z.string()).describe('2-3 short guesses at the main thing it helps them do'),
+    different: z.array(z.string()).describe('2-3 short guesses at what makes it different from similar apps'),
+  }).describe('Tap-to-answer suggestions for 3 quick questions to the founder; each under 8 words'),
+  review_themes: z.object({
+    loves: z.array(z.string()).describe('What users love, in their own words, from the reviews given. Empty if no reviews.'),
+    complaints: z.array(z.string()).describe('What users complain about, from the reviews given. Empty if no reviews.'),
+  }),
+  aso: z.object({
+    title: z.string().describe('App Store title, 30 characters max, name plus what it does'),
+    subtitle: z.string().describe('30 characters max, the main benefit'),
+    keywords: z.string().describe('Comma-separated search keywords, 100 characters max total, no spaces after commas, no words already in the title'),
+    screenshots: z.array(z.object({ order: z.number(), caption: z.string().describe('Under 6 words, the benefit shown') })).describe('The best order for screenshots and a caption for each'),
+  }).nullable().describe('Only for app listings: App Store optimization. null for websites.'),
 });
 export type Growth = z.infer<typeof GrowthSchema>;
 
@@ -43,8 +58,10 @@ Rules:
 - search_phrases: two everyday words each, the way people write in forums ("invoice app", "launch checklist"), not marketing phrases.
 - No em dashes.`;
 
-export function growthPrompt(i: { name: string; url: string; fit: string | null; pages: { url: string; title: string; text: string }[]; page: { title: string; description: string; h1: string[]; ctas: string[]; forms: number }; hints: string[]; presence: Record<string, unknown> }) {
+export function growthPrompt(i: { name: string; url: string; fit: string | null; pages: { url: string; title: string; text: string }[]; page: { title: string; description: string; h1: string[]; ctas: string[]; forms: number }; hints: string[]; presence: Record<string, unknown>; isApp?: boolean; answers?: { who?: string; does?: string; different?: string } | null }) {
   return [
+    i.isApp ? 'This is a mobile app: the first page below is its app store listing (with reviews in users’ own words). Fill in "aso". Page fixes refer to the listing (title, description, screenshots).' : 'This is a website: set "aso" to null.',
+    i.answers ? `The founder told us (trust this over your own reading): who it is for: ${i.answers.who ?? '-'}; main thing it helps them do: ${i.answers.does ?? '-'}; what makes it different: ${i.answers.different ?? '-'}` : '',
     `Product: ${i.name}`, `Website: ${i.url}`,
     i.fit ? `The founder says: ${i.fit === 'launching_soon' ? 'launching soon' : i.fit === 'already_live' ? 'already live, needs users' : 'just exploring'}` : '',
     `Landing page: title "${i.page.title}", headline "${i.page.h1.join(' | ') || 'none'}", buttons: ${i.page.ctas.join(' | ') || 'none'}, email forms: ${i.page.forms}, meta description: "${i.page.description || 'none'}"`,
@@ -70,5 +87,8 @@ export function mockGrowth(name: string, type: Growth['product_type'] = 'b2b_saa
     opportunities: [{ title: 'Sample opportunity 1', why: 'Mock mode.' }, { title: 'Sample opportunity 2', why: 'Mock mode.' }, { title: 'Sample opportunity 3', why: 'Mock mode.' }],
     search_phrases: ['invoice app', 'side project'],
     sample_post: `Sample post for ${name} (mock mode).`,
+    questions: { who: ['Freelancers', 'Small agencies'], does: ['Get paid faster', 'Send invoices'], different: ['Works in WhatsApp', 'No app to install'] },
+    review_themes: { loves: [], complaints: [] },
+    aso: type === 'consumer_app' ? { title: `${name}: sample`, subtitle: 'Sample subtitle', keywords: 'sample,mock', screenshots: [{ order: 1, caption: 'Sample caption' }] } : null,
   };
 }

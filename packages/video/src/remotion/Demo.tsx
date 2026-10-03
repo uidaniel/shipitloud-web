@@ -1,4 +1,4 @@
-import { AbsoluteFill, Img, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig, continueRender, delayRender } from 'remotion';
+import { AbsoluteFill, Img, OffthreadVideo, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig, continueRender, delayRender } from 'remotion';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { T, type DemoProps, type Shot, type VideoTheme } from '../types';
 
@@ -65,7 +65,7 @@ function Hook({ hook, theme }: Pick<DemoProps, 'hook' | 'theme'>) {
 }
 
 /** Screenshot in a plain frame; slow push-in and a gentle scroll so stills feel alive. */
-function Frame({ src, kind, w, theme }: { src: string; kind: 'browser' | 'phone'; w: number; theme: VideoTheme }) {
+function Frame({ src, kind, w, theme, video }: { src: string; kind: 'browser' | 'phone'; w: number; theme: VideoTheme; video?: { src: string; from: number } | null }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const rise = spring({ frame: frame - 4, fps, config: { damping: 200 } });
@@ -84,7 +84,9 @@ function Frame({ src, kind, w, theme }: { src: string; kind: 'browser' | 'phone'
         </div>
       )}
       <div style={{ flex: 1, overflow: 'hidden', background: theme.bg }}>
-        <Img src={src} style={{ width: '100%', display: 'block', transform: `translateY(${scroll}%)` }} />
+        {video
+          ? <OffthreadVideo src={video.src} startFrom={Math.round(video.from * fps)} muted style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          : <Img src={src} style={{ width: '100%', display: 'block', transform: `translateY(${scroll}%)` }} />}
       </div>
     </div>
   );
@@ -96,8 +98,8 @@ function ShotBeat({ shot, theme }: { shot: Shot; theme: VideoTheme }) {
   const portrait = height > width * 1.2;
   const landscape = width > height * 1.2;
   // Portrait prefers the phone shot; wide formats prefer desktop.
-  const src = portrait ? (shot.mobile ?? shot.desktop) : (shot.desktop ?? shot.mobile);
-  const kind: 'browser' | 'phone' = src === shot.mobile && shot.mobile ? 'phone' : 'browser';
+  const src = shot.video ? shot.video.src : portrait ? (shot.mobile ?? shot.desktop) : (shot.desktop ?? shot.mobile);
+  const kind: 'browser' | 'phone' = shot.video || (src === shot.mobile && shot.mobile) ? 'phone' : 'browser';
   const pad = Math.round(Math.min(width, height) * 0.075);
   const capSize = Math.round(Math.min(width, height) * (landscape ? 0.068 : portrait ? 0.074 : 0.062));
   const frameW = kind === 'phone'
@@ -110,7 +112,7 @@ function ShotBeat({ shot, theme }: { shot: Shot; theme: VideoTheme }) {
         <Words text={shot.caption} size={capSize} color={theme.fg} delay={2} />
       </div>
       <div style={{ flex: landscape ? 1 : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
-        {src ? <Frame src={src} kind={kind} w={frameW} theme={theme} /> : null}
+        {src ? <Frame src={src} kind={kind} w={frameW} theme={theme} video={shot.video} /> : null}
       </div>
     </AbsoluteFill>
   );

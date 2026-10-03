@@ -8,6 +8,9 @@ export interface Analysis {
   presence: { socials?: string[]; blog?: boolean; reviews?: string[]; appStore?: boolean; analytics?: boolean };
   growth_score: number | null; score_parts: { label: string; got: number; of: number; tip: string }[]; opportunities: { title: string; why: string }[];
   seconds: number | null; created_at: string;
+  listing?: { store: 'apple' | 'google'; name: string; icon: string | null; screenshots: string[]; rating: number | null; ratings: number | null; category: string | null } | null;
+  aso?: { title: string; subtitle: string; keywords: string; screenshots: { order: number; caption: string }[] } | null;
+  review_themes?: { loves: string[]; complaints: string[] } | null;
 }
 export interface Channel { id: string; name: string; rank: number; role: 'lead' | 'support'; reason: string; enabled: boolean; connect: string | null }
 
@@ -56,6 +59,31 @@ export function AnalysisView({ a }: { a: Analysis }) {
           <ul className="pr-fixes">{a.page_fixes.map((f) => <li key={f.area}><span className="pr-chip">{AREA[f.area] ?? f.area}</span><div><b>{f.fix}</b><small>{f.why}</small></div></li>)}</ul>
         </section>
       </div>
+
+      {a.review_themes && (a.review_themes.loves.length > 0 || a.review_themes.complaints.length > 0) && (
+        <div className="pr-grid-2" style={{ alignItems: 'start' }}>
+          <section><h3>What users love <small className="pr-hint" style={{ fontWeight: 400 }}>· from your reviews</small></h3><ul className="pr-fixes">{a.review_themes.loves.map((x) => <li key={x}><span className="pr-chip pr-chip-ok">Love</span><div><b>{x}</b></div></li>)}</ul></section>
+          <section><h3>What they complain about</h3><ul className="pr-fixes">{a.review_themes.complaints.map((x) => <li key={x}><span className="pr-chip pr-chip-warn">Fix</span><div><b>{x}</b></div></li>)}</ul></section>
+        </div>
+      )}
+
+      {a.aso && (
+        <section>
+          <h3>App Store optimization</h3>
+          <div className="pr-aso">
+            <div className="pr-aso-row"><span>Title</span><b>{a.aso.title}</b><small>{a.aso.title.length}/30</small></div>
+            <div className="pr-aso-row"><span>Subtitle</span><b>{a.aso.subtitle}</b><small>{a.aso.subtitle.length}/30</small></div>
+            <div className="pr-aso-row"><span>Keywords</span><b style={{ fontWeight: 500, overflowWrap: 'anywhere' }}>{a.aso.keywords}</b><small>{a.aso.keywords.length}/100</small></div>
+            {a.aso.screenshots.length > 0 && (
+              <div className="pr-aso-shots">
+                {[...a.aso.screenshots].sort((x, y) => x.order - y.order).map((sh, i) => (
+                  <figure key={i}>{a.listing?.screenshots[sh.order - 1] ? <img src={a.listing.screenshots[sh.order - 1]} alt="" /> : <span className="sk" style={{ height: 196, display: 'block', borderRadius: 12 }} />}<figcaption>{i + 1}. {sh.caption}</figcaption></figure>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {a.competitor_gaps.length > 0 && (
         <section>

@@ -6,7 +6,7 @@ import {
   BudgetExceededError, type BrandContext, VIDEO_SCRIPT_SYSTEM, VIDEO_SCRIPT_VERSION, VideoScriptSchema, fastModel, findUnsupportedClaims, generate, mockVideoScript, videoScriptPrompt,
 } from '@shipitloud/ai';
 import { prepareLogo, themeFromPalette } from '@shipitloud/templates';
-import { VIDEO_FORMATS, renderVideo, type Shot, type VideoFormat } from '@shipitloud/video';
+import { T, VIDEO_FORMATS, renderVideo, type Shot, type VideoFormat } from '@shipitloud/video';
 import { aiLedger, check, db, enqueue } from './db.ts';
 import { PlanLimitError, brandContext } from './launch.ts';
 
@@ -105,8 +105,17 @@ export async function makeDemoVideo(workspaceId: string, opts: { formats?: Video
 }
 
 async function build(workspaceId: string, b: BrandContext, formats: VideoFormat[]) {
-  // 1. Screenshots
+  // 1. Screens: a screen recording (cut into stretches) beats everything; then uploads; then app store screenshots;
+  //    then sections of the website.
+  const media = (await db.from('brand_kits').select('recording, screenshots').eq('workspace_id', workspaceId).maybeSingle()).data as { recording: { url: string; seconds: number } | null; screenshots: string[] | null } | null;
   let shots = await uploadedShots(workspaceId);
+  if (media?.recording?.url) {
+    const n = Math.max(2, Math.min(4, Math.floor(media.recording.seconds / (T.shot / 30))));
+    const step = Math.max(0, (media.recording.seconds - T.shot / 30) / Math.max(1, n - 1));
+    shots = [...Array.from({ length: n }, (_, i) => ({ caption: '', video: { src: media.recording!.url, from: Math.round(i * step * 10) / 10 } })), ...shots].slice(0, 5);
+  } else if (!shots.length && media?.screenshots?.length) {
+    shots = media.screenshots.slice(0, 4).map((u) => ({ caption: '', mobile: u }));
+  }
   let headings: string[][] = shots.map(() => []);
   if (!shots.length) {
     if (!b.url) throw new Error('Add your site link or upload a few screenshots first.');
@@ -157,7 +166,7 @@ async function build(workspaceId: string, b: BrandContext, formats: VideoFormat[
 
   const asset = check(await db.from('assets').insert({
     workspace_id: workspaceId, type: 'video', platform: 'instagram', title: s.title || `${b.name} demo video`,
-    content: { cuts, script: { hook: s.hook, captions: shots.map((x) => x.caption), cta: s.cta }, music: s.music, shots: shots.map((x) => ({ desktop: x.desktop, mobile: x.mobile })) },
+    content: { cuts, script: { hook: s.hook, captions: shots.map((x) => x.caption), cta: s.cta }, music: s.music, shots: shots.map((x) => ({ desktop: x.desktop, mobile: x.mobile, video: x.video ?? null })) },
     file_url: cuts.story ?? Object.values(cuts)[0] ?? null, template_id: 'demo', qa_score: 90, publish_score: 90,
     confidence: flags.length ? 60 : 85, flags, prompt_version: VIDEO_SCRIPT_VERSION, model: script.model,
   }).select('id').single(), 'asset');

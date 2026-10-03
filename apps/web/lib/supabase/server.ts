@@ -51,6 +51,8 @@ export interface Workspace {
   url: string | null;
   plan: 'free' | 'launch_pass' | 'grow' | 'scale';
   fit: 'launching_soon' | 'already_live' | 'exploring' | null;
+  setup_answers: { who?: string; does?: string; different?: string } | null;
+  app_links: { apple?: string; google?: string };
   stage: 'launch' | 'grow';
   trust_mode: 'manual' | 'trust' | 'full';
   trust_threshold: number;

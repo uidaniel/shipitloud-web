@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { SiteNav } from '@/components/space/site-nav';
 import { Refresh } from './refresh';
+import { AnalysingScene } from './scene';
 import '../../space.css';
 
 export const metadata: Metadata = { title: 'Your free growth analysis', robots: { index: false } };
@@ -41,16 +42,11 @@ export default async function FreeAnalysis({ params }: { params: Promise<{ id: s
       {font && f.status === 'ready' && <link rel="stylesheet" href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@500;700&display=swap`} />}
       <div className="space-bg" aria-hidden="true" />
       <SiteNav onHome={false} />
-      <main className="sp-wrap fa-wrap" style={style}>
+      <main className={`sp-wrap fa-wrap ${f.status === 'running' ? 'fa-wide' : ''}`} style={style}>
         {f.status === 'running' && (
           <>
             <Refresh />
-            <p className="fa-k">Free growth analysis · {host}</p>
-            <h1 className="fa-h">Reading your site…</h1>
-            <ul className="fa-live" aria-live="polite">
-              {['Reading your site', 'Pulling your logo and colors', 'Checking your landing page', 'Finding people talking about your problem', 'Picking your channels'].map((l, i) => <li key={l} style={{ animationDelay: `${i * 6}s` }}><span className="dot" />{l}</li>)}
-            </ul>
-            <p className="fa-note">About a minute. You can leave this page open.</p>
+            <AnalysingScene host={host} startedAt={f.created_at} />
           </>
         )}
         {f.status === 'failed' && (

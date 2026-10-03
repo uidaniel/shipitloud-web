@@ -256,7 +256,7 @@ export const handlers: Record<string, Handler> = {
   },
 
   /** The 10-minute setup: understand the product, growth analysis, channel plan; then the first wins. */
-  async 'setup.analyze'(_p, job) { await analyzeSetup(job.workspace_id!); },
+  async 'setup.analyze'(p, job) { await analyzeSetup(job.workspace_id!, { analysisId: typeof p.analysis_id === 'string' ? p.analysis_id : undefined }); },
   async 'setup.wins'(_p, job) { await startFirstWins(job.workspace_id!); },
   async 'free.analysis'(p) { await freeAnalysis(String(p.id)); },
 

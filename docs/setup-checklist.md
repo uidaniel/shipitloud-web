@@ -47,3 +47,9 @@ Everything below is already built in code. Each item is a dashboard setting, acc
 - [ ] Node 22, then `npm ci`, then `npx playwright install --with-deps chromium`. Remotion downloads its own headless Chrome on first render.
 - [ ] Copy the env vars from `.env.example`. Run `npm start -w @shipitloud/worker` under a process manager.
 - [ ] At least 2 GB RAM for video rendering.
+
+## App links (App Store and Google Play)
+- [ ] Apple: nothing to set up. Listings come from Apple's public iTunes Lookup and Search APIs; reviews from the public review feed, or the app's public page when the feed is empty.
+- [ ] Install attribution on iOS: add the founder's App Store Connect provider token (`pt`) so campaign links (`ct=<channel>`) show up in App Store Connect's App Analytics.
+- [ ] Google Play: there is no official public listing API. Today we read only the public listing page's basic metadata (name, description, icon, rating), no reviews. Before reading Play reviews, choose a licensed data provider (or confirm Google's terms allow it) and wire it into `apps/worker/src/appstore.ts`.
+- [ ] App analytics (P1): App Store Connect and Firebase connections so installs are attributed to channels instead of estimated.

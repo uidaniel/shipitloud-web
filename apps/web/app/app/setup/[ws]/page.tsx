@@ -8,11 +8,12 @@ import { AnalysisView, stageLabel, typeLabel, type Analysis, type Channel } from
 import { acceptChannels, decide, setupNext } from '../../actions';
 import { KitRefresher } from '../../[ws]/kit/refresher';
 import { DescribeForm } from './describe';
+import { SetupQuestions } from './questions';
 
 export const metadata: Metadata = { title: 'Set up' };
 
 // PRD section 23: paste URL → understand → summary → growth analysis → channel plan → connect → first wins → plan live.
-const STEPS = ['understand', 'summary', 'analysis', 'channels', 'connect', 'wins', 'live'] as const;
+const STEPS = ['understand', 'questions', 'summary', 'analysis', 'channels', 'connect', 'wins', 'live'] as const;
 type Step = (typeof STEPS)[number];
 const ACCOUNT: Record<string, { name: string; note: string; href?: string }> = {
   x: { name: 'X', note: 'Post your updates and threads.' },
@@ -61,7 +62,9 @@ export default async function Setup({ params, searchParams }: { params: Promise<
   const asked = STEPS.find((s) => s === want);
   // Where to be: the requested step if it's reachable, otherwise the first one not done.
   const firstOpen = STEPS.find((s) => !done.has(s)) ?? 'live';
-  const step: Step = !a || a.status !== 'ready' ? 'understand' : asked && STEPS.indexOf(asked) <= STEPS.indexOf(firstOpen) ? asked : firstOpen === 'understand' ? 'summary' : firstOpen;
+  // Just understood (progress may land a moment after the analysis): questions first when they're needed.
+  const afterUnderstand: Step = (a as (Analysis & { needs_questions?: boolean }) | null)?.needs_questions && !ws.setup_answers && !done.has('questions') ? 'questions' : 'summary';
+  const step: Step = !a || a.status !== 'ready' ? 'understand' : asked && STEPS.indexOf(asked) <= STEPS.indexOf(firstOpen) ? asked : firstOpen === 'understand' ? afterUnderstand : firstOpen;
 
   // ---- 0:00 – 1:30 understand: live progress
   if (step === 'understand') {
@@ -94,6 +97,21 @@ export default async function Setup({ params, searchParams }: { params: Promise<
     );
   }
   if (!a) return null;
+
+  // ---- 3 quick questions (app links and thin pages): tap an answer, add a website, maybe a recording
+  if (step === 'questions') {
+    const [{ data: kit }] = await Promise.all([sb.from('brand_kits').select('recording').eq('workspace_id', id).maybeSingle()]);
+    const listing = (a as Analysis & { listing?: { name: string; icon: string | null; website: string | null; rating: number | null; ratings: number | null } | null }).listing;
+    const q = ((a as Analysis & { questions?: Record<'who' | 'does' | 'different', string[]> | null }).questions) ?? { who: [], does: [], different: [] };
+    return (
+      <Frame ws={id} step="questions" wide>
+        {listing && <div className="pr-listing" style={{ marginBottom: 18 }}>{listing.icon && <img src={listing.icon} alt="" width={56} height={56} />}<div><b>{listing.name}</b><small>{listing.rating ? `${listing.rating.toFixed(1)} stars from ${listing.ratings?.toLocaleString('en-US') ?? 0} ratings` : 'New listing'}</small></div></div>}
+        <h1>3 quick questions</h1>
+        <p className="sub">{listing ? 'App listings say less than a website. Tap the closest answer, or write your own.' : 'Your page says little, so help us get it right. Tap the closest answer, or write your own.'}</p>
+        <SetupQuestions ws={id} options={q} isApp={!!listing} website={listing?.website ?? null} recording={(kit?.recording as { url: string; seconds: number } | null) ?? null} />
+      </Frame>
+    );
+  }
 
   // ---- summary: what it does, who it's for … confirm or edit
   if (step === 'summary') {

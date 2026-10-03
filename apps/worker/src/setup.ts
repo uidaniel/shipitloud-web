@@ -2,13 +2,15 @@
 // channel plan from the product type's playbook, and the first wins. Also the free mini analysis for the landing page.
 import { GROWTH_SYSTEM, GROWTH_VERSION, GrowthSchema, fastModel, findUnsupportedClaims, generate, growthPrompt, mockGrowth, type Growth } from '@shipitloud/ai';
 import { prepareLogo, themeFromPalette } from '@shipitloud/templates';
-import { auditHints, channelPlan, extractPage, growthScore, presenceFrom, scrubNumbers, urlHint, type AuditHint, type Fit, type PageFacts } from '@shipitloud/engine';
+import { auditHints, channelPlan, extractPage, growthScore, isStoreUrl, needsQuestions, presenceFrom, scrubNumbers, urlHint, type AuditHint, type Fit, type PageFacts } from '@shipitloud/engine';
+import { listingAsSite, readListing } from './appstore.ts';
 import { aiLedger, check, db, enqueue } from './db.ts';
 import { buildBrand } from './brand.ts';
 import { crawlSite, type SiteFacts } from './crawl.ts';
 import { humanize } from './content.ts';
 import { renderHtml } from './conversion.ts';
 import { searchHN } from './sources.ts';
+import { fitWords } from './posters.ts';
 
 export async function progress(workspaceId: string, step: string, done = false) {
   if (done) await db.from('setup_progress').upsert({ workspace_id: workspaceId, step, completed_at: new Date().toISOString() }, { onConflict: 'workspace_id,step' });
@@ -32,22 +34,38 @@ async function readSite(url: string): Promise<{ site: SiteFacts; page: PageFacts
   return { site, page };
 }
 
+/** App Store keywords: whole words only, comma-separated, within Apple's 100 characters. */
+function fitKeywords(k: string) {
+  const out: string[] = [];
+  for (const w of k.split(',').map((x) => x.trim()).filter(Boolean)) { if ([...out, w].join(',').length > 100) break; out.push(w); }
+  return out.join(',');
+}
+
 /** The AI's read of the product, cleaned. Store links and repos override a vague product type. */
-async function analyse(o: { name: string; url: string; fit: Fit | null; site: SiteFacts; page: PageFacts; hints: AuditHint[]; workspaceId?: string; purpose: string }) {
+async function analyse(o: { name: string; url: string; fit: Fit | null; site: SiteFacts; page: PageFacts; hints: AuditHint[]; workspaceId?: string; purpose: string; isApp?: boolean; answers?: { who?: string; does?: string; different?: string } | null }) {
   const presence = presenceFrom(o.site.html, o.url);
   const out = await generate({
     ledger: aiLedger, purpose: o.purpose, promptVersion: GROWTH_VERSION, workspaceId: o.workspaceId ?? null, model: fastModel(),
-    system: GROWTH_SYSTEM, schema: GrowthSchema, maxTokens: 2000, mock: () => mockGrowth(o.name, urlHint(o.url) ?? 'b2b_saas'),
-    user: growthPrompt({ name: o.name, url: o.url, fit: o.fit, pages: o.site.pages, page: o.page, hints: o.hints.map((h) => `(${h.area}) ${h.issue}`), presence: { ...presence } }),
+    system: GROWTH_SYSTEM, schema: GrowthSchema, maxTokens: 2600, mock: () => mockGrowth(o.name, urlHint(o.url) ?? (o.isApp ? 'consumer_app' : 'b2b_saas')),
+    user: growthPrompt({ name: o.name, url: o.url, fit: o.fit, pages: o.site.pages, page: o.page, hints: o.hints.map((h) => `(${h.area}) ${h.issue}`), presence: { ...presence }, isApp: o.isApp, answers: o.answers }),
   });
   const g: Growth = out.data;
+  // Trim every list to its size here, so a model that returns one extra item never fails the analysis.
+  g.hangouts = g.hangouts.slice(0, 5);
+  g.competitor_gaps = g.competitor_gaps.slice(0, 4);
+  g.opportunities = g.opportunities.slice(0, 3);
+  g.search_phrases = g.search_phrases.slice(0, 4);
+  g.review_themes = { loves: g.review_themes.loves.slice(0, 4), complaints: g.review_themes.complaints.slice(0, 4) };
+  g.questions = { who: g.questions.who.slice(0, 3), does: g.questions.does.slice(0, 3), different: g.questions.different.slice(0, 3) };
+  if (g.aso) g.aso = { ...g.aso, title: fitWords(g.aso.title, 30), subtitle: fitWords(g.aso.subtitle, 30), keywords: fitKeywords(g.aso.keywords), screenshots: g.aso.screenshots.slice(0, 6) };
   const hint = urlHint(o.url);
   if (hint && g.product_type === 'other') g.product_type = hint;
+  if (!o.isApp) g.aso = null;
   if (o.fit === 'launching_soon' && g.stage !== 'pre_launch') g.stage = 'pre_launch';
   // Only numbers the site itself says survive: predictions ("would find 50+ users") are cut out.
   const facts = o.site.pages.map((p) => `${p.title}\n${p.text}`).join('\n');
   const clean = (t: string) => scrubNumbers(humanize(t), facts);
-  const fixes = g.page_fixes.map((f) => ({ ...f, fix: clean(f.fix), why: clean(f.why) })).filter((f, i, all) => f.fix && all.findIndex((x) => x.area === f.area) === i);
+  const fixes = g.page_fixes.map((f) => ({ ...f, fix: clean(f.fix), why: clean(f.why) })).filter((f, i, all) => f.fix && all.findIndex((x) => x.area === f.area) === i).slice(0, 3);
   return {
     g: { ...g, summary: humanize(g.summary), problem: humanize(g.problem), positioning: clean(g.positioning) || humanize(g.positioning).replace(/\d[\d,.+]*\s*/g, ''), ideal_customer: humanize(g.ideal_customer),
       sample_post: clean(g.sample_post),
@@ -58,16 +76,30 @@ async function analyse(o: { name: string; url: string; fit: Fit | null; site: Si
 }
 
 /** Understand the product and build the growth analysis + channel plan (acceptance: 90 seconds or less). */
-export async function analyzeSetup(workspaceId: string) {
+export async function analyzeSetup(workspaceId: string, opts: { analysisId?: string } = {}) {
   const t0 = Date.now();
   await progress(workspaceId, 'understand');
-  const w = check(await db.from('workspaces').select('product_name, url, fit, plan').eq('id', workspaceId).single(), 'ws')!;
-  const { data: row } = await db.from('growth_analyses').insert({ workspace_id: workspaceId, url: w.url, status: 'running' }).select('id').single();
+  const w = check(await db.from('workspaces').select('product_name, url, fit, plan, app_links, setup_answers').eq('id', workspaceId).single(), 'ws')!;
+  // The app may have created the row already (so the page shows progress at once); otherwise start one.
+  const { data: row } = opts.analysisId ? { data: { id: opts.analysisId } } : await db.from('growth_analyses').insert({ workspace_id: workspaceId, url: w.url, status: 'running' }).select('id').single();
   try {
     const brain = (await db.from('brand_brains').select('description, status').eq('workspace_id', workspaceId).maybeSingle()).data;
     let site: SiteFacts | null = null;
     let page: PageFacts | null = null;
-    if (w.url) ({ site, page } = await readSite(w.url));
+    // App links: read the store listing (reviews included); a website, if the founder gave one, is read too.
+    const links = (w.app_links ?? {}) as { apple?: string; google?: string };
+    const storeLink = isStoreUrl(w.url) ? w.url! : links.apple ?? links.google ?? null;
+    const website = w.url && !isStoreUrl(w.url) ? w.url : null;
+    const listing = storeLink ? await readListing(storeLink) : null;
+    if (listing) {
+      site = listingAsSite(listing);
+      page = extractPage(site.html);
+      if (website) {
+        const web = await readSite(website).catch(() => null);
+        if (web) site = { ...site, pages: [...site.pages, ...web.site.pages], html: `${web.site.html}${site.html}`, fontFamilies: web.site.fontFamilies };
+      }
+      await db.from('brand_kits').upsert({ workspace_id: workspaceId, screenshots: listing.screenshots, ...(listing.icon ? { logo_url: listing.icon } : {}), updated_at: new Date().toISOString() });
+    } else if (website) ({ site, page } = await readSite(website));
     if (!site) {
       if (!brain?.description) throw new Error('Add your site link or a short description so we know what to work with.');
       // No site: the founder's own description stands in for the homepage.
@@ -75,29 +107,36 @@ export async function analyzeSetup(workspaceId: string) {
       site = { pages: [{ url: '', title: w.product_name, text: brain.description }], html, meta: { icons: [] }, fontFamilies: [] };
       page = extractPage(html);
     }
-    const hints = w.url ? auditHints(page!) : [];
+    // Landing page checks only make sense for a website; a listing has its own fixes (the AI covers those).
+    const hints = website && !listing ? auditHints(page!) : [];
+    const answers = (w.setup_answers ?? null) as { who?: string; does?: string; different?: string } | null;
     const [, a] = await Promise.all([
       // A re-run keeps the founder's edited brand brain; only a first setup (or a failed one) builds it.
-      brain?.status === 'ready' ? Promise.resolve() : buildBrand(workspaceId, { site: w.url ? site : null }),
-      analyse({ name: w.product_name, url: w.url ?? '', fit: w.fit, site, page: page!, hints, workspaceId, purpose: 'growth_analysis' }),
+      brain?.status === 'ready' ? Promise.resolve() : buildBrand(workspaceId, { site: listing || website ? site : null }),
+      analyse({ name: w.product_name, url: storeLink ?? website ?? '', fit: w.fit, site, page: page!, hints, workspaceId, purpose: 'growth_analysis', isApp: !!listing, answers }),
     ]);
+    if (listing && ['other', 'b2b_saas'].includes(a.g.product_type)) a.g.product_type = 'consumer_app';
     const { data: b } = await db.from('brand_brains').select('competitors, status').eq('workspace_id', workspaceId).single();
     const count = (area: string) => hints.filter((h) => h.area === area).length;
     const score = growthScore({ pageIssues: { clarity: count('clarity'), cta: count('cta'), trust: count('trust') }, presence: a.presence, hasPricing: page!.trust.pricing, hasEmailForm: page!.forms > 0, competitorsKnown: (b?.competitors ?? []).length });
     const plan = channelPlan(a.g.product_type, { stage: a.g.stage, fit: w.fit, plan: w.plan, hasAppStore: a.presence.appStore || a.presence.playStore });
+    await progress(workspaceId, 'understand', true);
+    // App links and thin pages get 3 quick questions first (unless answered); everyone else goes to the summary.
+    await progress(workspaceId, needsQuestions({ isApp: !!listing, words: page!.words }) && !answers ? 'questions' : 'summary');
     await db.from('growth_analyses').update({
       status: 'ready', product_type: a.g.product_type, stage: a.g.stage, pricing_model: a.g.pricing_model, summary: a.g.summary, problem: a.g.problem,
       ideal_customer: a.g.ideal_customer, hangouts: a.g.hangouts, positioning: a.g.positioning, page_fixes: a.g.page_fixes, competitor_gaps: a.g.competitor_gaps,
       presence: a.presence, growth_score: score.score, score_parts: score.parts, opportunities: a.g.opportunities, model: a.model, prompt_version: GROWTH_VERSION,
       seconds: Math.round((Date.now() - t0) / 1000),
+      listing: listing ? { store: listing.store, url: listing.url, name: listing.name, category: listing.category, price: listing.price, icon: listing.icon, screenshots: listing.screenshots, rating: listing.rating, ratings: listing.ratings, reviews: listing.reviews.length, similar: listing.similar, website: listing.website } : null,
+      aso: a.g.aso ?? null, review_themes: a.g.review_themes, questions: a.g.questions,
+      needs_questions: needsQuestions({ isApp: !!listing, words: page!.words }),
     }).eq('id', row!.id);
     // Re-runs keep the founder's on/off choices for channels that are still in the plan.
     const { data: prev } = await db.from('channel_plans').select('channels, accepted_at').eq('workspace_id', workspaceId).maybeSingle();
     const choice = new Map(((prev?.accepted_at ? prev.channels : []) as { id: string; enabled: boolean }[]).map((c) => [c.id, c.enabled]));
     const merged = plan.map((c) => (choice.has(c.id) ? { ...c, enabled: choice.get(c.id)! } : c));
     await db.from('channel_plans').upsert({ workspace_id: workspaceId, playbook_type: a.g.product_type, channels: merged, accepted_at: prev?.accepted_at ?? null, updated_at: new Date().toISOString() });
-    await progress(workspaceId, 'understand', true);
-    await progress(workspaceId, 'summary');
     return { seconds: Math.round((Date.now() - t0) / 1000) };
   } catch (err) {
     await db.from('growth_analyses').update({ status: 'failed', error: (err instanceof Error ? err.message : String(err)).slice(0, 300) }).eq('id', row!.id);
@@ -153,10 +192,12 @@ export async function freeAnalysis(id: string) {
   if (!f || f.status !== 'running') return;
   const t0 = Date.now();
   try {
-    const { site, page } = await readSite(f.url);
-    const name = site.meta.siteName || page.title.split(/[|\-–—:]/)[0]!.trim() || new URL(f.url).hostname;
-    const hints = auditHints(page);
-    const [a, brand] = await Promise.all([analyse({ name, url: f.url, fit: f.fit, site, page, hints, purpose: 'free_analysis' }), brandFromSite(site, f.url)]);
+    const listing = isStoreUrl(f.url) ? await readListing(f.url) : null;
+    const { site, page } = listing ? (() => { const s = listingAsSite(listing); return { site: s, page: extractPage(s.html) }; })() : await readSite(f.url);
+    const name = listing?.name.split(/[:|]/)[0]!.trim() || site.meta.siteName || page.title.split(/[|\-–—:]/)[0]!.trim() || new URL(f.url).hostname;
+    const hints = listing ? [] : auditHints(page);
+    const [a, brand] = await Promise.all([analyse({ name, url: f.url, fit: f.fit, site, page, hints, purpose: 'free_analysis', isApp: !!listing }), brandFromSite(site, f.url)]);
+    if (listing && ['other', 'b2b_saas'].includes(a.g.product_type)) a.g.product_type = 'consumer_app';
     const plan = channelPlan(a.g.product_type, { stage: a.g.stage, fit: f.fit }).filter((c) => c.enabled).slice(0, 5);
     const count = (area: string) => hints.filter((h) => h.area === area).length;
     const score = growthScore({ pageIssues: { clarity: count('clarity'), cta: count('cta'), trust: count('trust') }, presence: a.presence, hasPricing: page.trust.pricing, hasEmailForm: page.forms > 0, competitorsKnown: a.g.competitor_gaps.length });
@@ -170,6 +211,8 @@ export async function freeAnalysis(id: string) {
         name, brand, summary: a.g.summary, positioning: a.g.positioning, product_type: a.g.product_type, stage: a.g.stage, page_fixes: a.g.page_fixes,
         channels: plan.map((c) => ({ name: c.name, reason: c.reason, role: c.role })), score: score.score, opportunities: a.g.opportunities,
         sample_post: postOk ? post : null, conversations: talk, phrases: a.g.search_phrases, seconds: Math.round((Date.now() - t0) / 1000),
+        listing: listing ? { store: listing.store, rating: listing.rating, ratings: listing.ratings, screenshots: listing.screenshots.slice(0, 3) } : null,
+        review_themes: listing ? a.g.review_themes : null, aso: a.g.aso ?? null,
       },
     }).eq('id', id);
   } catch (err) {

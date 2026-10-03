@@ -1,7 +1,10 @@
 export interface VideoTheme { bg: string; fg: string; muted: string; accent: string; onAccent: string }
 
-/** One screenshot beat. `desktop` goes in a browser frame, `mobile` in a phone frame; either may be missing. */
-export interface Shot { caption: string; desktop?: string | null; mobile?: string | null }
+/**
+ * One screenshot beat. `desktop` goes in a browser frame, `mobile` in a phone frame; either may be missing.
+ * `video` plays a stretch of the founder's screen recording in the phone frame instead of a still.
+ */
+export interface Shot { caption: string; desktop?: string | null; mobile?: string | null; video?: { src: string; from: number } | null }
 
 export interface DemoProps {
   [key: string]: unknown;
