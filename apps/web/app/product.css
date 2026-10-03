@@ -580,12 +580,12 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 /* ---------- 10-minute setup (PRD section 23) ---------- */
 .pr-onb-next { margin-top: 28px; }
 .pr-onb-h3 { margin: 28px 0 10px; font-size: 15px; font-weight: 600; }
-.pr-live { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 14px; }
-.pr-live li { display: flex; align-items: center; gap: 12px; font-size: 15px; color: var(--faint); transition: color .3s; }
-.pr-live li.now { color: var(--text); }
-.pr-live li.done { color: var(--muted); }
-.pr-live .m { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: rgba(245,245,242,.06); font-size: 12px; color: var(--ok); flex: none; }
-.pr-live small { margin-left: auto; color: var(--faint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45%; }
+.pr-setup-steps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 14px; }
+.pr-setup-steps li { display: flex; align-items: center; gap: 12px; font-size: 15px; color: var(--faint); transition: color .3s; }
+.pr-setup-steps li.now { color: var(--text); }
+.pr-setup-steps li.done { color: var(--muted); }
+.pr-setup-steps .m { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: rgba(245,245,242,.06); font-size: 12px; color: var(--ok); flex: none; }
+.pr-setup-steps small { margin-left: auto; color: var(--faint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45%; }
 .pr-sumgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 640px) { .pr-sumgrid { grid-template-columns: 1fr; } }
 .pr-sumgrid > div { padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); min-width: 0; }
@@ -747,3 +747,10 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 .pr-listing b { display: block; font-size: 15px; }
 .pr-listing small { color: var(--muted); font-size: 13px; }
 @media (max-width: 560px) { .pr-aso-row { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Setup: the galaxy behind every step; the scene on the "getting to know you" step. */
+.setup-cosmos { min-height: 100vh; }
+.setup-cosmos .pr-onb-card { position: relative; z-index: 1; }
+.setup-cosmos .comets { z-index: 0; }
+.setup-scene { background: none; overflow: visible; }
+.setup-scene .az { min-height: 56vh; }

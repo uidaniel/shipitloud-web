@@ -6,10 +6,11 @@ import { supabaseBrowser } from '@/lib/supabase/client';
 import { saveRecording, saveSetupAnswers, startRecordingUpload } from '../../actions';
 
 type Q = { key: 'who' | 'does' | 'different'; label: string };
-const QS: Q[] = [
+// Words match what was pasted: "apps" for App Store / Google Play links, "products" for websites and web apps.
+const questions = (isApp: boolean): Q[] => [
   { key: 'who', label: 'Who is it for?' },
   { key: 'does', label: 'What’s the main thing it helps them do?' },
-  { key: 'different', label: 'What makes it different from similar apps?' },
+  { key: 'different', label: `What makes it different from similar ${isApp ? 'apps' : 'products'}?` },
 ];
 
 /** The 3 quick questions (tap an answer or write your own), an optional website and an optional screen recording. */
@@ -19,7 +20,7 @@ export function SetupQuestions({ ws, options, isApp, website, recording }: { ws:
   return (
     <form action={saveSetupAnswers} className="pr-qs">
       <input type="hidden" name="ws" value={ws} />
-      {QS.map((q) => (
+      {questions(isApp).map((q) => (
         <fieldset key={q.key} className="pr-q">
           <legend>{q.label}</legend>
           <div className="pr-seg">
@@ -37,13 +38,13 @@ export function SetupQuestions({ ws, options, isApp, website, recording }: { ws:
           <p className="pr-hint">We’ll read it alongside your listing.</p>
         </div>
       )}
-      <RecordingUpload ws={ws} recording={recording} />
+      <RecordingUpload ws={ws} recording={recording} isApp={isApp} />
       <div className="pr-onb-next"><Submit className="pr-btn pr-btn-primary pr-btn-lg" pending="Updating your analysis…">Continue</Submit></div>
     </form>
   );
 }
 
-function RecordingUpload({ ws, recording }: { ws: string; recording: { url: string; seconds: number } | null }) {
+function RecordingUpload({ ws, recording, isApp }: { ws: string; recording: { url: string; seconds: number } | null; isApp: boolean }) {
   const input = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<'idle' | 'busy' | 'done'>(recording ? 'done' : 'idle');
   const [error, setError] = useState<string | null>(null);
@@ -76,8 +77,8 @@ function RecordingUpload({ ws, recording }: { ws: string; recording: { url: stri
   return (
     <div className="pr-rec">
       <div>
-        <b>A screen recording of your app (optional)</b>
-        <small>30 to 60 seconds of the app in use. We pull key screens from it and use it in your demo video.</small>
+        <b>A screen recording of your {isApp ? 'app' : 'product'} (optional)</b>
+        <small>30 to 60 seconds of it in use. We pull key screens from it and use it in your demo video.</small>
       </div>
       <input ref={input} type="file" accept="video/mp4,video/quicktime,video/webm" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); }} />
       {state === 'busy' ? <span className="pr-chip"><span className="spin" /> Uploading…</span>

@@ -29,7 +29,7 @@ export const GrowthSchema = z.object({
   questions: z.object({
     who: z.array(z.string()).describe('2-3 short, specific guesses at who it is for, e.g. "Freelance designers"'),
     does: z.array(z.string()).describe('2-3 short guesses at the main thing it helps them do'),
-    different: z.array(z.string()).describe('2-3 short guesses at what makes it different from similar apps'),
+    different: z.array(z.string()).describe('2-3 short guesses at what makes it different from similar products (or apps, for app listings)'),
   }).describe('Tap-to-answer suggestions for 3 quick questions to the founder; each under 8 words'),
   review_themes: z.object({
     loves: z.array(z.string()).describe('What users love, in their own words, from the reviews given. Empty if no reviews.'),

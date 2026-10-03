@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { SiteNav } from '@/components/space/site-nav';
 import { Refresh } from './refresh';
-import { AnalysingScene } from './scene';
+import { AnalysingScene } from '@/components/space/analysing-scene';
 import '../../space.css';
 
 export const metadata: Metadata = { title: 'Your free growth analysis', robots: { index: false } };

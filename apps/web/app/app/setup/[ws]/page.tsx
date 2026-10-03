@@ -7,6 +7,8 @@ import { Submit } from '@/components/app/ui';
 import { AnalysisView, stageLabel, typeLabel, type Analysis, type Channel } from '@/components/app/growth';
 import { acceptChannels, decide, setupNext } from '../../actions';
 import { KitRefresher } from '../../[ws]/kit/refresher';
+import { AnalysingScene } from '@/components/space/analysing-scene';
+import { Comets } from '@/components/space/comets';
 import { DescribeForm } from './describe';
 import { SetupQuestions } from './questions';
 
@@ -23,14 +25,15 @@ const ACCOUNT: Record<string, { name: string; note: string; href?: string }> = {
   github: { name: 'GitHub', note: 'Turn releases into posts.', href: 'content?tab=updates' },
   reddit: { name: 'Reddit', note: 'Through our Chrome extension: you post with one tap.', href: 'settings#extension' },
 };
-const LINES = [['Reading your site', 0], ['Finding your competitors', 8], ['Checking where you already show up', 18], ['Working out where your users are', 30]] as const;
 const fmt = (s: number) => `${Math.floor(s / 60)}m ${String(Math.round(s % 60)).padStart(2, '0')}s`;
 
-function Frame({ ws, step, wide, children }: { ws: string; step: Step; wide?: boolean; children: React.ReactNode }) {
+function Frame({ ws, step, wide, xwide, children }: { ws: string; step: Step; wide?: boolean; xwide?: boolean; children: React.ReactNode }) {
   const i = STEPS.indexOf(step);
   return (
-    <div className="pr-onb" style={{ alignItems: 'start', paddingTop: 'clamp(28px, 7vh, 72px)' }}>
-      <div className="pr-onb-card" style={{ maxWidth: wide ? 820 : 560 }}>
+    <div className="pr-onb cosmos setup-cosmos" style={{ alignItems: 'start', paddingTop: 'clamp(28px, 7vh, 72px)' }}>
+      <div className="cosmos-sky" aria-hidden="true"><i className="s1" /><i className="s2" /><i className="s3" /></div>
+      <Comets />
+      <div className="pr-onb-card" style={{ maxWidth: xwide ? 1180 : wide ? 820 : 560 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
           <LogoIcon size={34} />
           <Link href={`/app/${ws}/inbox`} className="pr-btn pr-btn-ghost pr-btn-sm">Skip setup</Link>
@@ -69,10 +72,9 @@ export default async function Setup({ params, searchParams }: { params: Promise<
   // ---- 0:00 – 1:30 understand: live progress
   if (step === 'understand') {
     const started = (prog ?? []).find((p) => p.step === 'understand')?.started_at;
-    const elapsed = started ? (Date.now() - Date.parse(started)) / 1000 : 0;
     const failed = a?.status === 'failed' || (!ws.url && brain?.status !== 'building' && !a);
     return (
-      <Frame ws={id} step="understand">
+      <Frame ws={id} step="understand" xwide>
         {!failed && <KitRefresher every={2500} />}
         {failed ? (
           <>
@@ -81,17 +83,11 @@ export default async function Setup({ params, searchParams }: { params: Promise<
             <DescribeForm ws={id} initial={brain?.description ?? ''} />
           </>
         ) : (
-          <>
-            <h1>Getting to know {ws.product_name}</h1>
-            <p className="sub">This takes about a minute. You don’t need to do anything.</p>
-            <ul className="pr-live" aria-live="polite">
-              {LINES.map(([label, at], i) => {
-                const next = LINES[i + 1]?.[1] ?? Infinity;
-                const state = elapsed >= next ? 'done' : elapsed >= at ? 'now' : 'wait';
-                return <li key={label} className={state}><span className="m">{state === 'done' ? '✓' : state === 'now' ? <span className="spin" /> : ''}</span>{label}{state === 'now' && i === 0 && ws.url ? <small>{ws.url.replace(/^https?:\/\//, '')}</small> : null}</li>;
-              })}
-            </ul>
-          </>
+          <div className="space setup-scene">
+            <AnalysingScene host={(ws.url ?? ws.product_name).replace(/^https?:\/\//, '').replace(/\/$/, '')} startedAt={started ?? new Date().toISOString()}
+              kicker={`Setting up ${ws.product_name}`} title={`Getting to know ${ws.product_name}…`}
+              steps={[{ at: 0, label: 'Reading your site' }, { at: 6, label: 'Finding your competitors' }, { at: 12, label: 'Checking where you already show up' }, { at: 18, label: 'Working out where your users are' }, { at: 26, label: 'Building your growth plan' }]} />
+          </div>
         )}
       </Frame>
     );
