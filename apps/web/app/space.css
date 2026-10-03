@@ -1104,3 +1104,27 @@ html:has(.space) body { background: transparent; }
 @keyframes az2-breathe { 50% { box-shadow: inset -14px -18px 30px rgba(10,6,40,.55), 0 0 0 18px rgba(91,61,245,.06), 0 0 110px rgba(91,61,245,.7); } }
 @keyframes az2-card { from { opacity: 0; transform: translate(-50%, 8px) scale(.96); } }
 @media (max-width: 900px) { .az-stage { height: auto; } .az2 { width: min(340px, 86vw); margin-bottom: 18px; } .az2-card { font-size: 13px; } }
+
+/* help, changelog, status (public pages) */
+.help-list { list-style: none; padding: 0; margin: 24px 0; display: grid; gap: 10px; }
+.help-list a { display: grid; gap: 4px; padding: 18px 20px; border-radius: 16px; border: 1px solid rgba(245,245,242,.1); background: rgba(245,245,242,.03); text-decoration: none; color: inherit; transition: border-color .15s, background .15s; }
+.help-list a:hover { border-color: rgba(198,255,61,.45); background: rgba(245,245,242,.05); }
+.help-list b { font-size: 17px; color: var(--paper); }
+.help-list span { color: var(--muted); font-size: 15px; }
+.help-sum { font-size: 18px; color: var(--paper); }
+.changelog { list-style: none; padding: 0; margin: 24px 0; display: grid; gap: 28px; }
+.changelog time { font-size: 13px; color: var(--lime); }
+.changelog h2 { margin: 4px 0 6px !important; }
+.status-hero { display: flex; align-items: center; gap: 12px; margin: 20px 0; padding: 18px 20px; border-radius: 16px; font-size: 18px; font-weight: 600; color: var(--paper); background: rgba(198,255,61,.08); border: 1px solid rgba(198,255,61,.3); }
+.status-hero i { width: 12px; height: 12px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 12px var(--lime); }
+.status-hero.is-degraded { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.35); } .status-hero.is-degraded i { background: #f59e0b; box-shadow: 0 0 12px #f59e0b; }
+.status-hero.is-down { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.35); } .status-hero.is-down i { background: #ef4444; box-shadow: 0 0 12px #ef4444; }
+.status-list { list-style: none; padding: 0; margin: 0 0 20px; display: grid; }
+.status-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid rgba(245,245,242,.08); }
+.status-list small { display: block; color: var(--faint); font-size: 13px; }
+.status-list b { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.status-list .is-ok { color: var(--lime); } .status-list .is-test { color: #a493ff; } .status-list .is-degraded { color: #f59e0b; } .status-list .is-down { color: #ef4444; }
+
+.legal-table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 15px; }
+.legal-table th, .legal-table td { text-align: left; padding: 12px 10px; border-bottom: 1px solid rgba(245,245,242,.1); vertical-align: top; }
+.legal-table th { color: var(--muted); font-weight: 500; font-size: 13px; }

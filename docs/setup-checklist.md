@@ -61,3 +61,9 @@ Everything below is already built in code. Each item is a dashboard setting, acc
 - [ ] Webhook endpoint in Dodo: `https://<app>/api/billing/webhook`, subscribed to all `subscription.*` and `payment.*` events.
 - [ ] Turn on Dodo's customer portal (card and invoices) and dunning retries over 7 days.
 - [ ] Before launch, in Dodo test mode: start a trial, let it convert, fail a card, pause, resume and cancel, and check each lands on the right plan.
+
+## Admin, support and legal
+- [ ] `ADMIN_EMAILS`: comma-separated emails that can open `/admin`. Each admin sets up an authenticator app (two-factor) on first visit; everyone else gets a 404.
+- [ ] `SUPPORT_EMAIL`: where in-app "Contact us" messages are sent (defaults to hello@shipitloud.com). Tickets are also stored in `support_tickets`.
+- [ ] Supabase Auth → Multi-factor: make sure TOTP is enabled (it is by default).
+- [ ] Have a lawyer review Terms, Privacy, Refunds, Cookies, Acceptable Use, the DPA and the sub-processors list before launch (PRD section 25).

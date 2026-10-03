@@ -1086,3 +1086,22 @@ export async function cancelDeletion(form: FormData) {
   await admin.from('admin_audit_log').insert({ admin_id: user.id, action: 'workspace.deletion_cancelled', target: wsId });
   revalidatePath(`/app/${wsId}`, 'layout');
 }
+
+// ---------------------------------------------------------------- support (PRD section 25)
+export async function submitTicket(_: unknown, form: FormData): Promise<FormState> {
+  const wsId = str(form.get('ws'));
+  const { user, ws } = await requireWorkspace(wsId);
+  const subject = str(form.get('subject'), 140);
+  const body = str(form.get('body'), 5000);
+  if (!subject || body.length < 5) return fail(form, 'Add a subject and a few words about what happened.');
+  const admin = supabaseAdmin();
+  // At most 5 tickets an hour per person, so the inbox can't be flooded.
+  const { count } = await admin.from('support_tickets').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', new Date(Date.now() - 3600_000).toISOString());
+  if ((count ?? 0) >= 5) return fail(form, 'You’ve sent a few already. We’ll reply to those first.');
+  const { error } = await admin.from('support_tickets').insert({ workspace_id: wsId, user_id: user.id, email: user.email ?? '', subject, body });
+  if (error) return fail(form, 'Couldn’t send. Email hello@shipitloud.com instead.');
+  const { sendEmail } = await import('@shipitloud/engine');
+  const to = process.env.SUPPORT_EMAIL ?? 'hello@shipitloud.com';
+  await sendEmail({ from: process.env.EMAIL_FROM ?? 'ShipItLoud <onboarding@resend.dev>', replyTo: user.email ?? null, to, subject: `[Support] ${subject}`, html: `<p><b>${ws.product_name}</b> (${ws.plan}) · ${user.email}</p><pre style="white-space:pre-wrap;font-family:inherit">${body.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[c]!)}</pre>`, text: `${ws.product_name} (${ws.plan}) · ${user.email}\n\n${body}`, unsubscribeUrl: 'https://shipitloud.com' }).catch(() => undefined);
+  return { ok: true };
+}

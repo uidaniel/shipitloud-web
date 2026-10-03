@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const pages: MetadataRoute.Sitemap = ['', '/pricing', '/terms', '/privacy', '/refund'].map((path) => ({
+  const pages: MetadataRoute.Sitemap = ['', '/pricing', '/terms', '/privacy', '/refund', '/cookies', '/acceptable-use', '/dpa', '/subprocessors', '/help', '/changelog', '/status'].map((path) => ({
     url: `${site.url}${path}`,
     changeFrequency: path ? 'monthly' : 'weekly',
     priority: path ? 0.5 : 1,

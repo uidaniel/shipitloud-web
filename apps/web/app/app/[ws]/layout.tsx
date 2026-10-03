@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { requireWorkspace } from '@/lib/supabase/server';
 import { Sidebar } from './sidebar';
+import { HelpButton } from '@/components/app/help-button';
+import { articles } from '@/lib/help';
 
 export default async function WorkspaceLayout({ children, params }: { children: React.ReactNode; params: Promise<{ ws: string }> }) {
   const { ws: id } = await params;
@@ -20,7 +22,9 @@ export default async function WorkspaceLayout({ children, params }: { children: 
   const sub = subRes.data;
   const trialLeft = sub?.status === 'trialing' && sub.trial_ends_at ? Math.ceil((Date.parse(sub.trial_ends_at) - Date.now()) / 86_400_000) : null;
   const del = delRes.data;
-  const banner = del
+  const banner = ws.suspended_at
+    ? <div className="pr-banner pr-banner-err pr-top-banner"><span><b>This workspace is paused.</b> {ws.suspended_reason ?? 'We’re reviewing unusual activity.'} Nothing posts, sends or spends until it’s cleared. Reply to hello@shipitloud.com and we’ll sort it out.</span></div>
+    : del
     ? <div className="pr-banner pr-banner-err pr-top-banner"><span><b>This workspace will be deleted on {new Date(del.scheduled_for).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.</b> Changed your mind? You can keep it until then.</span><Link className="pr-btn pr-btn-sm" href={`/app/${id}/settings`}>Keep it</Link></div>
     : sub?.status === 'past_due'
     ? <div className="pr-banner pr-banner-err pr-top-banner"><span><b>Your payment didn’t go through.</b> Update your card to keep everything running.</span><Link className="pr-btn pr-btn-sm" href={`/app/${id}/billing`}>Update card</Link></div>
@@ -47,6 +51,7 @@ export default async function WorkspaceLayout({ children, params }: { children: 
       >
         {banner}
         {children}
+        <HelpButton ws={id} items={articles.map(({ slug, title, summary, tags }) => ({ slug, title, summary, tags }))} />
       </Sidebar>
   );
 }

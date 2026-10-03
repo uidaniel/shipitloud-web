@@ -63,5 +63,6 @@ export interface Workspace {
   free_wins_used: number;
   referral_code: string | null;
   suspended_at: string | null;
+  suspended_reason: string | null;
   created_at: string;
 }
