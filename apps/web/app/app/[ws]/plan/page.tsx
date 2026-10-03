@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Tiles } from '@/components/app/bento';
 import Link from 'next/link';
 import { requireWorkspace } from '@/lib/supabase/server';
 import { Submit } from '@/components/app/ui';
@@ -68,13 +69,12 @@ export default async function Plan({ params }: { params: Promise<{ ws: string }>
 
   return (
     <div className="pr-body" style={{ maxWidth: 860 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: '-0.02em' }}>Launch on {dateFor(plan!.launch_date, 0)}</h2>
-          <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 13 }}>{done} of {tasks.length} done{today < 0 ? ` · ${-today} days to go` : today === 0 ? ' · launch day' : ` · day ${today} after launch`}</p>
-        </div>
-        <div className="pr-meter-bar" style={{ width: 200, height: 6 }}><i style={{ width: `${(done / tasks.length) * 100}%` }} /></div>
-      </div>
+      <div className="pr-page-h"><h1 className="pr-h1">30-day plan</h1><p className="pr-lead">Small daily tasks around your launch. Tick them off as you go.</p></div>
+      <Tiles items={[
+        { label: 'Launch day', value: dateFor(plan!.launch_date, 0), text: true, tone: 'violet', sub: today < 0 ? `${-today} days to go` : today === 0 ? 'Today. Go!' : `day ${today} after launch` },
+        { label: 'Done', value: done, unit: `/${tasks.length}`, tone: 'lime', sub: `${Math.round((done / Math.max(1, tasks.length)) * 100)}% of the plan` },
+        { label: 'Today', value: tasks.filter((t) => t.day === today && !t.done).length, tone: 'mesh', sub: 'tasks left today' },
+      ]} />
       {groups.map((g) => (
         <section key={g.name} style={{ marginBottom: 22 }}>
           <h3 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--faint)', fontWeight: 500 }}>{g.name}</h3>

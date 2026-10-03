@@ -33,7 +33,11 @@ export default async function Inbox({ params, searchParams }: { params: Promise<
   const safe = items.filter((a) => a.type !== 'reply' && !a.flags.length && (a.confidence ?? 0) >= ws.trust_threshold);
 
   return (
-    <div className="pr-body">
+    <div className="pr-body pr-inbox">
+      <div className="pr-page-h">
+        <h1 className="pr-h1">Inbox</h1>
+        <p className="pr-lead">{all.length ? `${all.length} waiting for your OK. Nothing goes out without you.` : 'All caught up.'}</p>
+      </div>
       {ws.kill_switch && (
         <div className="pr-banner pr-banner-err">
           <span><b>Kill switch is on.</b> Nothing will post, send or spend until you turn it off.</span>

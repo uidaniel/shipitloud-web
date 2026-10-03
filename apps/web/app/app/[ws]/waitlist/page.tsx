@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Tiles } from '@/components/app/bento';
 import { requireWorkspace } from '@/lib/supabase/server';
 import { site } from '@/lib/site';
 import Link from 'next/link';
@@ -55,6 +56,12 @@ export default async function Waitlist({ params }: { params: Promise<{ ws: strin
 
   return (
     <div className="pr-body" style={{ maxWidth: 900, display: "grid", gap: 18 }}>
+      <div><h1 className="pr-h1">Waitlist</h1><p className="pr-lead" style={{ margin: '6px 0 0' }}>A page people can join before launch, and the emails they get.</p></div>
+      <Tiles items={[
+        { label: 'Signups', value: count ?? 0, tone: 'violet', sub: page?.published_at ? 'on your page' : 'publish your page to start' },
+        { label: 'Top source', value: sources.size ? [...sources].sort((a, b) => b[1] - a[1])[0]![0] : '–', text: true, tone: 'mesh' },
+        { label: 'Referrals', value: (signups ?? []).reduce((n, x) => n + (x.referral_count ?? 0), 0), tone: 'lime', sub: 'friends invited' },
+      ]} />
       <PageEditor
         ws={id}
         paid={ws.plan !== 'free'}

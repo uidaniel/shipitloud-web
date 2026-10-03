@@ -129,7 +129,7 @@ export function Sidebar({ ws, pending, meter, email, notifications, mini: miniSt
         <header className="pr-top">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button className="pr-btn pr-btn-ghost pr-btn-sm pr-mobile-top" aria-label="Open menu" onClick={() => setOpen(true)}>{Icon.menu}</button>
-            <h1>{title}</h1>
+            <h1><span className="crumb">{ws.name}</span>{title}</h1>
           </div>
           <div className="pr-top-r">
             <div className="pr-bell" ref={bellRef}>

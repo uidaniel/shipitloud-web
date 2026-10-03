@@ -12,7 +12,8 @@ export default async function Settings({ params }: { params: Promise<{ ws: strin
   const prefs = (profile?.notification_prefs ?? {}) as { email?: boolean; slack?: boolean; slack_webhook?: string };
 
   return (
-    <div className="pr-body" style={{ maxWidth: 820 }}>
+    <div className="pr-body pr-settings">
+      <div className="pr-page-h"><h1 className="pr-h1">Settings</h1><p className="pr-lead">Automation, safety and your product details.</p></div>
       <AutomationForm ws={id} mode={ws.trust_mode} threshold={ws.trust_threshold} dropped={ws.trust_dropped_reason} />
       <KillSwitch ws={id} on={ws.kill_switch} />
       <ProductForm ws={id} name={ws.product_name} url={ws.url ?? ''} launchDate={ws.launch_date ?? ''} />

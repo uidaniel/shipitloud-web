@@ -20,6 +20,7 @@ export default async function Brand({ params }: { params: Promise<{ ws: string }
   if (!brain || brain.status === 'idle' || brain.status === 'failed') {
     return (
       <div className="pr-body" style={{ maxWidth: 820 }}>
+        <div className="pr-page-h"><h1 className="pr-h1">Brand</h1></div>
         <div className="pr-list"><div className="pr-empty">
           <h2>{brain?.status === 'failed' ? 'We couldn’t build your brand brain' : 'No brand brain yet'}</h2>
           <p>{brain?.error ?? 'Tell us about your product so every draft sounds like you.'}</p>
@@ -32,6 +33,7 @@ export default async function Brand({ params }: { params: Promise<{ ws: string }
 
   return (
     <div className="pr-body" style={{ maxWidth: 820 }}>
+      <div className="pr-page-h"><h1 className="pr-h1">Brand</h1><p className="pr-lead">How {ws.product_name} looks and sounds. Every draft uses this.</p></div>
       <BrandEditor ws={id} brand={{ ...brain, tone: voice?.tone ?? null }} />
 
       <section className="pr-section">

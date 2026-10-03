@@ -189,6 +189,7 @@ export default async function Kit({ params, searchParams }: { params: Promise<{ 
   const active = TABS.find((t) => t.key === tab)?.key ?? 'posters';
   return (
     <div className="pr-body">
+      <div className="pr-page-h"><h1 className="pr-h1">Launch kit</h1><p className="pr-lead">Everything for launch day, made in your brand.</p></div>
       <nav className="pr-tabs" aria-label="Launch kit">
         {TABS.map((t) => (
           <Link key={t.key} href={t.key === 'posters' ? `/app/${id}/kit` : `/app/${id}/kit?tab=${t.key}`} aria-current={active === t.key ? 'page' : undefined}>{t.label}</Link>

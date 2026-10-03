@@ -122,7 +122,7 @@ export default async function Momentum({ params }: { params: Promise<{ ws: strin
     <div className="pr-body" style={{ display: 'grid', gap: 20 }}>
       <div>
         <h1 className="pr-h1">Momentum</h1>
-        <p className="pr-lead">What ShipItLoud found and did for {ws.product_name} in the last 30 days, and what came back.</p>
+        <p className="pr-lead">Last 30 days for {ws.product_name}.</p>
       </div>
 
       <div className="pr-stats">
@@ -143,7 +143,7 @@ export default async function Momentum({ params }: { params: Promise<{ ws: strin
 
       {now.length > 0 && !nothing && <div className="pr-section"><div className="pr-section-b"><Chart days={now} /></div></div>}
       {nothing && (
-        <div className="pr-list"><div className="pr-empty"><h2>Your momentum starts here</h2><p>Turn on Listening, plan a week of posts, and add the snippet below to your site. Replies and your own network usually bring the first signups in week one; content builds over weeks two to six.</p></div></div>
+        <div className="pr-list"><div className="pr-empty"><h2>Your numbers fill in from here</h2><p>Replies usually bring the first signups in week one. Content builds over the weeks after.</p></div></div>
       )}
 
       <Digest ws={id} digests={(digests ?? []) as DigestRow[]} writing={writing} />

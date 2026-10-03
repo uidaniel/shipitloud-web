@@ -58,6 +58,7 @@ export default async function Activity({ params }: { params: Promise<{ ws: strin
 
   return (
     <div className="pr-body">
+      <div className="pr-page-h"><h1 className="pr-h1">Activity</h1><p className="pr-lead">Everything that went out, and what’s ready for you to post.</p></div>
       {!!readyItems.length && (
         <section style={{ marginBottom: 28 }}>
           <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600 }}>Ready for you to post</h2>

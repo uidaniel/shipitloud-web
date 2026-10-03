@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Tiles } from '@/components/app/bento';
 import Link from 'next/link';
 import { requireWorkspace } from '@/lib/supabase/server';
 import { Submit } from '@/components/app/ui';
@@ -92,9 +93,11 @@ export default async function Listening({ params, searchParams }: { params: Prom
   else if (f === 'drafted') q = q.in('status', ['drafted', 'replied']);
   else if (f === 'dismissed') q = q.eq('status', 'dismissed');
   else q = q.neq('status', 'dismissed');
-  const [{ data: mentions }, { count: bestCount }] = await Promise.all([
+  const [{ data: mentions }, { count: bestCount }, { count: weekCount }, { count: repliedCount }] = await Promise.all([
     q,
     sb.from('mentions').select('id', { count: 'exact', head: true }).eq('workspace_id', id).gte('score', cfg.threshold).in('status', ['new', 'drafted']).gt('expires_at', new Date().toISOString()),
+    sb.from('mentions').select('id', { count: 'exact', head: true }).eq('workspace_id', id).gte('created_at', new Date(Date.now() - 7 * 86_400_000).toISOString()),
+    sb.from('mentions').select('id', { count: 'exact', head: true }).eq('workspace_id', id).eq('status', 'replied'),
   ]);
 
   // Smart search links: Reddit and Indie Hackers are read in the founder's own browser, never by us.
@@ -105,6 +108,12 @@ export default async function Listening({ params, searchParams }: { params: Prom
     <div className="pr-body pr-listen">
       {(polling || drafting.size > 0) && <KitRefresher />}
       <div className="pr-listen-main">
+        <h1 className="pr-h1" style={{ marginBottom: 16 }}>Listening</h1>
+        <Tiles items={[
+          { label: 'Found this week', value: weekCount ?? 0, tone: 'violet', sub: 'people talking about your problem' },
+          { label: 'Worth a reply', value: bestCount ?? 0, tone: 'mesh', href: `/app/${id}/listening` },
+          { label: 'Replied', value: repliedCount ?? 0, tone: 'lime', sub: 'all time' },
+        ]} />
         <div className="pr-listen-head">
           <div className="pr-status">
             <span className={`pr-live${cfg.active ? " on" : ""}`} aria-hidden="true" />

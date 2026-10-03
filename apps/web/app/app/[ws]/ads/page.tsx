@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Tiles, Upsell } from '@/components/app/bento';
 import Link from 'next/link';
 import { requireWorkspace } from '@/lib/supabase/server';
 import { Submit } from '@/components/app/ui';
@@ -37,7 +38,7 @@ export default async function Ads({ params }: { params: Promise<{ ws: string }> 
     return (
       <div className="pr-body" style={{ display: 'grid', gap: 20 }}>
         <div><h1 className="pr-h1">Ads</h1><p className="pr-lead">Ads on autopilot, inside limits you set.</p></div>
-        <div className="pr-list"><div className="pr-empty"><h2>Ads autopilot is on the Scale plan</h2><p>Once organic posts show which messages work, put budget behind them. You set daily and total caps; we write the ads, you approve them, and autopilot only acts inside your limits.</p><Link className="pr-btn pr-btn-primary" href="/pricing" style={{ marginTop: 12 }}>See plans</Link></div></div>
+        <Upsell kicker="Scale plan" title="Put budget behind what already works" body="When organic posts show which messages land, we turn them into ads on Meta and Google." points={['You set daily and total caps', 'You approve every ad before it runs', 'Losers pause, winners get the budget']} href="/pricing" cta="See plans" />
       </div>
     );
   }
@@ -51,6 +52,9 @@ export default async function Ads({ params }: { params: Promise<{ ws: string }> 
   const byAsset = new Map((assets ?? []).map((a) => [a.id as string, a as { id: string; status: string; file_url: string | null; content: { headline?: string; angle?: string; primary_text?: string } }]));
   const busy = campaigns.some((c) => c.status === 'drafting' || c.status === 'failed' && !c.error);
   const running = campaigns.some((c) => c.status === 'active');
+  const sum = (k: 'spend_cents' | 'clicks' | 'conversions') => (ads ?? []).reduce((n, a) => n + Number(a[k] ?? 0), 0);
+  const spent = sum('spend_cents'), clicks = sum('clicks'), conv = sum('conversions');
+  const money = (c: number) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
 
   return (
     <div className="pr-body" style={{ display: 'grid', gap: 20 }}>
@@ -59,6 +63,12 @@ export default async function Ads({ params }: { params: Promise<{ ws: string }> 
         <div><h1 className="pr-h1">Ads</h1><p className="pr-lead">You set the caps and approve the ads. Autopilot only acts inside your limits, and tells you why.</p></div>
         {running && <form action={stopAllAds}><input type="hidden" name="ws" value={id} /><Submit className="pr-btn pr-btn-danger" pending="Stopping…">Stop all ads</Submit></form>}
       </div>
+      <Tiles items={[
+        { label: 'Spent so far', value: money(spent), tone: 'violet', sub: 'across all campaigns' },
+        { label: 'Clicks', value: clicks, tone: 'mesh' },
+        { label: 'Signups', value: conv, tone: 'lime' },
+        { label: 'Cost per signup', value: conv ? money(Math.round(spent / conv)) : '–', tone: 'mint' },
+      ]} />
 
       {campaigns.map((c) => {
         const mine = ((ads ?? []) as Ad[]).filter((a) => a.campaign_id === c.id);

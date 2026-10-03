@@ -61,16 +61,18 @@ export function InboxItem({ ws, asset, threshold }: { ws: string; asset: InboxAs
     </>
   );
 
+  // "Post" as a title says nothing; "Post for X" does.
+  const generic = !asset.title || asset.title.trim().toLowerCase() === (TYPE[asset.type] ?? '').toLowerCase();
   return (
     <article className="pr-item pr-fade-in">
       <div className="pr-item-ico">{p ? <PlatformIcon name={p.icon} size={24} /> : <span className="pr-chip">{TYPE[asset.type]}</span>}</div>
       <div className="pr-item-main">
         <div className="pr-item-h">
-          <span className="pr-item-title">{asset.title}</span>
+          <span className="pr-item-title">{generic && p ? `${TYPE[asset.type] ?? 'Draft'} for ${p.name}` : asset.title}</span>
           {asset.flags.map((f) => <span key={f} className="pr-chip pr-chip-err">{f}</span>)}
         </div>
         <div className="pr-item-meta">
-          <span>{TYPE[asset.type] ?? asset.type}{p && p.name !== TYPE[asset.type] ? ` · ${p.name}` : ''}</span>
+          {!generic && <span>{TYPE[asset.type] ?? asset.type}{p && p.name !== TYPE[asset.type] ? ` · ${p.name}` : ''}</span>}
           {asset.scheduled_for && <span>· Goes out in {when(asset.scheduled_for, true)}</span>}
           {asset.expires_at && <span className={expiringSoon ? 'pr-chip pr-chip-warn' : ''}>{expiringSoon ? `Expires in ${when(asset.expires_at, true)}` : `· Expires in ${when(asset.expires_at, true)}`}</span>}
           {asset.confidence != null && (

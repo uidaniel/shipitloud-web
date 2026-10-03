@@ -31,19 +31,19 @@ function Ring({ score }: { score: number }) {
   );
 }
 
-export function AnalysisView({ a, brief }: { a: Analysis; brief?: boolean }) {
+export function AnalysisView({ a, brief, noHero }: { a: Analysis; brief?: boolean; noHero?: boolean }) {
   // brief (setup): the score and the 3 opportunities up front, everything else one tap away.
   const Rest = brief ? ({ children }: { children: React.ReactNode }) => <details className="pr-more pr-more-big"><summary>See the full analysis</summary><div className="pr-growth" style={{ marginTop: 18 }}>{children}</div></details> : ({ children }: { children: React.ReactNode }) => <>{children}</>;
   return (
     <div className="pr-growth">
-      <section className="pr-growth-hero">
+      {!noHero && <section className="pr-growth-hero">
         <Ring score={a.growth_score ?? 0} />
         <div>
           <span className="k">Growth score</span>
           <p className="pos">{a.positioning}</p>
-          <small>{typeLabel(a.product_type)} · {stageLabel(a.stage)}{a.pricing_model && a.pricing_model !== 'unknown' ? ` · ${a.pricing_model}` : ''}</small>
+          <small>{[typeLabel(a.product_type), stageLabel(a.stage), a.pricing_model].filter((x) => x && !/^unknown$/i.test(x)).join(' · ')}</small>
         </div>
-      </section>
+      </section>}
 
       <section>
         <h3>Your 3 biggest opportunities</h3>

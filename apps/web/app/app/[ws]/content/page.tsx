@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { Tiles } from '@/components/app/bento';
+import { PLATFORM } from '@/components/app/post-card';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { requireWorkspace } from '@/lib/supabase/server';
@@ -52,7 +54,8 @@ function Week({ id, items, tz, busy }: { id: string; items: Item[]; tz: string; 
                 <div key={it.id} className="pr-item pr-fade-in" style={{ alignItems: 'center' }}>
                   <div>{it.platform && ICON[it.platform] ? <PlatformIcon name={ICON[it.platform]!} size={22} /> : null}</div>
                   <div className="pr-item-main">
-                    <span className="pr-item-title">{it.title}</span>
+                    <span className="pr-item-title">{it.type === 'post' && it.content.text ? `Post${it.platform ? ` for ${PLATFORM[it.platform] ?? it.platform}` : ''}` : it.title}</span>
+                    {it.content.text && <p className="pr-item-snip">{it.content.text}</p>}
                     <div className="pr-item-meta">
                       {it.scheduled_for && <span>{time(it.scheduled_for)}</span>}
                       {it.type === 'poster' && <span>Poster</span>}
@@ -206,13 +209,20 @@ export default async function Content({ params, searchParams }: { params: Promis
     );
   }
 
+  const weekAhead = new Date(Date.now() + 7 * 86_400_000).toISOString();
+  const counts = (await Promise.all([
+    sb.from('assets').select('id', { count: 'exact', head: true }).eq('workspace_id', id).in('type', ['post', 'poster', 'video']).gte('scheduled_for', new Date(Date.now() - 86_400_000).toISOString()).lte('scheduled_for', weekAhead).not('status', 'in', '(rejected,expired)'),
+    sb.from('assets').select('id', { count: 'exact', head: true }).eq('workspace_id', id).in('type', ['post', 'poster', 'video']).eq('status', 'pending'),
+    sb.from('assets').select('id', { count: 'exact', head: true }).eq('workspace_id', id).eq('status', 'published').gte('updated_at', new Date(Date.now() - 30 * 86_400_000).toISOString()),
+  ])).map((r) => r.count);
+
   return (
     <div className="pr-body">
       {busy && <KitRefresher />}
       <div className="pr-content-head">
         <div>
           <h1 className="pr-h1">Content</h1>
-          <p className="pr-lead">Posts from what you ship, what people ask and the formats that work, in your voice.</p>
+          <p className="pr-lead">Posts in your voice, from what you ship and what people ask.</p>
         </div>
         {brain?.status === 'ready' && allowed ? (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -229,7 +239,14 @@ export default async function Content({ params, searchParams }: { params: Promis
           <span><span className="spin" style={{ verticalAlign: '-2px', marginRight: 8 }} />{running.has('ugc.video') ? 'Rendering three video versions. About 5 minutes.' : running.has('ugc.carousel') ? 'Making your carousel…' : running.has('ugc.formats') ? 'Finding formats for your audience…' : running.has('content.week') ? 'Planning your week. About a minute.' : running.has('content.repurpose') ? 'Repurposing into a thread, LinkedIn post, status and poster…' : running.has('content.voice') ? 'Learning your voice…' : 'Writing…'}</span>
         </div>
       )}
-      <nav className="pr-tabs" aria-label="Content" style={{ marginTop: 14 }}>
+      <div style={{ marginTop: 18 }}>
+        <Tiles items={[
+          { label: 'Planned this week', value: counts[0] ?? 0, tone: 'violet', sub: src?.weekly_plan ? 'autopilot is on' : 'plan a week in one click' },
+          { label: 'Needs your OK', value: counts[1] ?? 0, tone: 'mesh', href: `/app/${id}/inbox`, sub: 'drafts in your inbox' },
+          { label: 'Published', value: counts[2] ?? 0, tone: 'lime', sub: 'last 30 days' },
+        ]} />
+      </div>
+      <nav className="pr-tabs" aria-label="Content">
         {TABS.map((t) => <Link key={t.key} href={t.key === 'week' ? `/app/${id}/content` : `/app/${id}/content?tab=${t.key}`} aria-current={active === t.key ? 'page' : undefined}>{t.label}</Link>)}
       </nav>
       <div style={{ marginTop: 14 }}>{body}</div>
