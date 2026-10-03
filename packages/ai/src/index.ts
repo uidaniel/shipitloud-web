@@ -11,3 +11,4 @@ export * from './prompts/ugc.ts';
 export * from './prompts/email.ts';
 export * from './prompts/digest.ts';
 export * from './prompts/conversion.ts';
+export * from './prompts/ads.ts';

@@ -26,4 +26,5 @@ export const Icon = {
   arrow: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M4 10h12M11 5l5 5-5 5" /></svg>,
   chat: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M4 15.5 3 18l3.2-1.2A7.5 7.5 0 1 0 4 15.5z" /></svg>,
   heart: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M10 16.5s-6-3.6-6-8.1A3.4 3.4 0 0 1 10 6.3a3.4 3.4 0 0 1 6 2.1c0 4.5-6 8.1-6 8.1z" /></svg>,
+  megaphone: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M3 8.5v3h2.5L12 15V5L5.5 8.5zM15 7.5a3 3 0 0 1 0 5M7 11.5l1 4.5h2" /></svg>,
 };

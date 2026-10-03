@@ -121,8 +121,8 @@ export function SiteNav({ onHome = true }: { onHome?: boolean }) {
                   </a>
                 ))}
               </div>
-              <a href={`${prefix}#join`} className="fnav-panel-cta" onClick={close}>
-                Join the waitlist <span aria-hidden="true">↗</span>
+              <a href={site.launch.live ? '/signup?next=%2Fapp%2Fnew' : `${prefix}#join`} className="fnav-panel-cta" onClick={close}>
+                {site.launch.live ? 'Start free' : 'Email me when it’s live'} <span aria-hidden="true">↗</span>
               </a>
             </div>
           </div>
@@ -135,7 +135,7 @@ export function SiteNav({ onHome = true }: { onHome?: boolean }) {
         </div>
       </div>
 
-      <a href={`${prefix}#join`} className="fnav-cta">Join waitlist</a>
+      <a href={site.launch.live ? '/signup?next=%2Fapp%2Fnew' : `${prefix}#join`} className="fnav-cta">{site.launch.live ? 'Start free' : 'Get notified'}</a>
     </header>
   );
 }

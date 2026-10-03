@@ -368,7 +368,7 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 .pr-strength-strong i::after { transform: scaleX(1); background: var(--ok); }
 .pr-token { display: flex; gap: 8px; align-items: center; padding: 6px 6px 6px 12px; border-radius: 9px; background: var(--panel); border: 1px solid var(--line-2); }
 .pr-token code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-family: inherit; font-size: 13px; color: var(--text); }
-.pr-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--muted); font-size: 14px; }
+.pr-howto { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--muted); font-size: 14px; }
 .pr-banner-info { background: rgba(91, 61, 245, .1); color: var(--text); border: 1px solid rgba(164, 147, 255, .3); }
 
 /* Content */
@@ -543,3 +543,36 @@ html:has(.pr), html:has(.pr) body { background: #0b0b10; }
 .pr-key-row { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; font-size: 13px; }
 .pr-key-row code { font-family: inherit; font-weight: 600; }
 .pr-key-row span { color: var(--muted); flex: 1 1 160px; }
+
+/* ---------- ads ---------- */
+.pr-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.pr-seg label, .pr-country label { position: relative; cursor: pointer; }
+.pr-seg input, .pr-country input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.pr-seg span, .pr-country span { display: inline-flex; align-items: center; padding: 8px 12px; border: 1px solid var(--line-2); border-radius: 9px; font-size: 13px; color: var(--muted); background: var(--panel); transition: border-color .15s, color .15s, background .15s; }
+.pr-seg input:checked + span, .pr-country input:checked + span { border-color: var(--violet); color: var(--text); background: rgba(91,61,245,.14); }
+.pr-seg input:focus-visible + span, .pr-country input:focus-visible + span { outline: 2px solid var(--violet-soft); outline-offset: 2px; }
+.pr-country { display: flex; flex-wrap: wrap; gap: 6px; }
+.pr-mode-note { margin: 0; padding: 10px 12px; border-radius: 10px; background: rgba(245,245,242,.04); border: 1px solid var(--line); font-size: 13px; color: var(--muted); line-height: 1.55; }
+.pr-mode-note b { color: var(--text); }
+.pr-mode-note.auto { border-color: rgba(91,61,245,.35); }
+.pr-mode-note.warn { border-color: rgba(251,191,36,.3); background: var(--warn-bg); color: var(--text); }
+.pr-spend { display: grid; gap: 6px; }
+.pr-spend > div:first-child { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.pr-spend b { color: var(--text); font-weight: 600; }
+.pr-spend b small { color: var(--faint); font-weight: 400; }
+.pr-spend .bar { height: 8px; border-radius: 99px; background: rgba(245,245,242,.06); overflow: hidden; }
+.pr-spend .bar i { display: block; height: 100%; background: var(--ok); border-radius: 99px; transition: width .4s ease; }
+.pr-spend .bar i.near { background: var(--warn); }
+.pr-spend .bar i.full { background: var(--err); }
+.pr-ad-cell { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.pr-ad-cell img, .pr-ad-cell .ph { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex: none; background: var(--panel-2); }
+.pr-ad-cell div { min-width: 0; }
+.pr-ad-cell b { display: block; font-size: 13px; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.pr-ad-cell small { display: block; font-size: 12px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.pr-adlog { list-style: none; margin: 0; padding: 12px 0 0; display: grid; gap: 12px; }
+.pr-adlog li { display: grid; grid-template-columns: 130px 1fr; gap: 2px 14px; font-size: 13px; }
+.pr-adlog .k { font-weight: 600; color: var(--text); }
+.pr-adlog .k-anomaly, .pr-adlog .k-kill, .pr-adlog .k-cap_reached, .pr-adlog .k-sync_error { color: var(--warn); }
+.pr-adlog p { margin: 0; color: var(--muted); line-height: 1.5; }
+.pr-adlog small { grid-column: 2; color: var(--faint); font-size: 12px; }
+@media (max-width: 560px) { .pr-adlog li { grid-template-columns: 1fr; } .pr-adlog small { grid-column: 1; } }

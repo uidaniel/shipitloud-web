@@ -206,8 +206,8 @@
 .cur button[aria-pressed='true'] { color: var(--ink); }
 .cur-pill { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 3); border-radius: 999px; background: var(--paper); transform: translateX(calc(var(--i) * 100%)); transition: transform .45s cubic-bezier(.2,.9,.2,1); }
 .plans-grid { margin-top: 48px; display: grid; gap: 16px; }
-@media (min-width: 680px) { .plans-grid { grid-template-columns: 1fr 1fr; } }
-@media (min-width: 1100px) { .plans-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 680px) and (max-width: 979px) { .plans-grid { grid-template-columns: 1fr 1fr; } .plans-grid > .plan-card:last-child { grid-column: 1 / -1; } }
+@media (min-width: 980px) { .plans-grid { grid-template-columns: repeat(3, 1fr); } }
 .plan-card { position: relative; border-radius: 22px; padding: 1px; background: var(--line-2); transition: translate .4s cubic-bezier(.2,.8,.2,1); }
 .plan-card:hover { translate: 0 -6px; }
 .plan-inner { position: relative; height: 100%; border-radius: 21px; padding: 28px 24px 24px; background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
@@ -227,6 +227,7 @@
 .plan-cur { font-size: 0.5em; margin-right: 2px; align-self: flex-start; margin-top: 0.18em; color: var(--muted); }
 .plan-per { margin-left: 8px; font-size: 14px; letter-spacing: 0; font-weight: 400; color: var(--muted); }
 .plan-sum { margin: 12px 0 0; color: var(--muted); font-size: 15px; }
+.plan-trial { margin: 10px 0 0; display: inline-flex; align-self: flex-start; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--ink); background: var(--lime); }
 .plan-list { margin: 24px 0 28px; padding: 20px 0 0; list-style: none; border-top: 1px solid var(--line); display: grid; gap: 12px; font-size: 14px; flex: 1; align-content: start; }
 .plan-list li { display: flex; gap: 12px; align-items: baseline; }
 .plan-list li::before { content: ''; flex: none; width: 10px; height: 6px; border-left: 1.5px solid var(--violet-soft); border-bottom: 1.5px solid var(--violet-soft); transform: rotate(-45deg) translateY(-2px); }
@@ -934,3 +935,10 @@ html:has(.space) body { background: transparent; }
 
 .an-feed li { grid-template-columns: 20px 1fr auto; }
 .bv-src { display: flex !important; align-items: center; gap: 6px; }
+
+/* Launch Pass: a smaller one-time option under the subscription plans (PRD section 11). */
+.pass-card { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; justify-content: space-between; padding: 22px 26px; border-radius: 18px; border: 1px solid var(--line-2); background: rgba(245,245,242,.02); }
+.pass-card > div { flex: 1 1 420px; min-width: 0; }
+.pass-card .plan-name { margin: 6px 0 4px; font-size: 22px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+.pass-card .pass-price { font-size: 15px; font-weight: 500; color: var(--muted, #a3a3b1); }
+.pass-card .plan-sum { margin: 0; }

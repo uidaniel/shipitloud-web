@@ -15,6 +15,7 @@ import { draftBroadcast, draftWaitlistEmails, runSequence } from './emails.ts';
 import { buildDigest, dueDigests } from './digests.ts';
 import { auditLandingPage, draftNetworkKit } from './conversion.ts';
 import { checkChurn, draftLifecycleEmails, runLifecycle } from './lifecycle.ts';
+import { addAds, draftCreatives, launch as launchCampaign, optimizeCampaign, pauseAll, pauseCampaign, resume as resumeCampaign, sendConversion, startCampaign, sync as syncCampaign } from './ads/index.ts';
 import { checkUpdates, learnVoice, makeContentWeek, postFromFormat, postsForUpdate, repurpose } from './content.ts';
 
 export type Handler = (payload: Record<string, unknown>, job: { id: string; workspace_id: string | null }) => Promise<void>;
@@ -209,6 +210,25 @@ export const handlers: Record<string, Handler> = {
     await planLimitNotice(job.workspace_id!, () => checkChurn(job.workspace_id!));
   },
 
+  /** Ads autopilot: draft creatives, launch after approval, hourly sync with caps, daily optimizing, kill switch. */
+  async 'ads.start'(p, job) {
+    await planLimitNotice(job.workspace_id!, async () => {
+      const n = await startCampaign(String(p.campaign_id));
+      await notifyOwner(job.workspace_id!, 'content_ready', `${n} ads to review`, 'Approve the ones you like, then launch the campaign. Nothing spends before that.', `${appUrl()}/app/${job.workspace_id}/inbox`);
+    });
+  },
+  async 'ads.launch'(p) { await launchCampaign(String(p.campaign_id)); },
+  async 'ads.add'(p) { await addAds(String(p.campaign_id)); },
+  async 'ads.sync'(p) { await syncCampaign(String(p.campaign_id)); },
+  async 'ads.optimize'(p, job) { await planLimitNotice(job.workspace_id!, () => optimizeCampaign(String(p.campaign_id))); },
+  async 'ads.kill'(_p, job) { await pauseAll(job.workspace_id!); },
+  async 'ads.more'(p, job) { await planLimitNotice(job.workspace_id!, () => draftCreatives(String(p.campaign_id), 2)); },
+  async 'ads.pause'(p) { await pauseCampaign(String(p.campaign_id), 'Paused by you', { actor: 'founder' }); },
+  async 'ads.resume'(p) { await resumeCampaign(String(p.campaign_id), 'founder'); },
+  async 'ads.capi'(p, job) {
+    await sendConversion(job.workspace_id!, { event_id: String(p.event_id), fbc: (p.fbc as string) ?? null, fbp: (p.fbp as string) ?? null, url: (p.url as string) ?? null, consent: (p.consent as string) ?? null });
+  },
+
   /** Landing page audit: the top fix for clarity, call to action and trust. */
   async 'kit.audit'(_p, job) {
     const ws = job.workspace_id!;
@@ -274,6 +294,12 @@ export const handlers: Record<string, Handler> = {
     // Waitlist sequence emails are templates: approving one switches it on; the sequence runner sends it.
     if (a.type === 'email' && (a.content as { sequence?: boolean }).sequence) {
       await db.from('email_settings').upsert({ workspace_id: a.workspace_id, sequence_on: true }, { onConflict: 'workspace_id', ignoreDuplicates: true });
+      return;
+    }
+    // Ad creatives don't publish on their own: they wait for the campaign launch, or join a running campaign.
+    if (a.type === 'ad_creative') {
+      const campaign = (a.content as { campaign_id?: string }).campaign_id;
+      if (campaign) await enqueue(a.workspace_id, 'ads.add', { campaign_id: campaign }, { key: `adsadd:${campaign}:${a.id}` });
       return;
     }
     // Lifecycle emails too: approving one switches lifecycle emails on (unless the founder turned them off).
@@ -384,6 +410,16 @@ export async function tick() {
     if (l.emails_on) await enqueue(l.workspace_id, 'lifecycle.run', {}, { key: `life:${l.workspace_id}:${lifeSlot}` });
     if (l.churn_alerts && (!l.last_churn_check || now.getTime() - Date.parse(l.last_churn_check) > 23 * 3600_000)) {
       await enqueue(l.workspace_id, 'lifecycle.churn', {}, { key: `churn:${l.workspace_id}:${now.toISOString().slice(0, 10)}` });
+    }
+  }
+
+  // Ads: sync spend hourly (caps and anomalies are checked there); optimize autopilot campaigns once a day.
+  const hour = Math.floor(now.getTime() / 3600_000);
+  const camps = check(await db.from('ad_campaigns').select('id, workspace_id, status, mode, last_synced_at, last_optimized_at, launched_at').in('status', ['active', 'paused']).not('launched_at', 'is', null), 'campaigns') as { id: string; workspace_id: string; status: string; mode: string; last_synced_at: string | null; last_optimized_at: string | null }[];
+  for (const c of camps) {
+    if (!c.last_synced_at || now.getTime() - Date.parse(c.last_synced_at) > 55 * 60_000) await enqueue(c.workspace_id, 'ads.sync', { campaign_id: c.id }, { key: `adsync:${c.id}:${hour}` });
+    if (c.status === 'active' && c.mode === 'autopilot' && (!c.last_optimized_at || now.getTime() - Date.parse(c.last_optimized_at) > 23 * 3600_000)) {
+      await enqueue(c.workspace_id, 'ads.optimize', { campaign_id: c.id }, { key: `adopt:${c.id}:${now.toISOString().slice(0, 10)}` });
     }
   }
 

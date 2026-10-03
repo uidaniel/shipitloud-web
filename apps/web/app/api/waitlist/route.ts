@@ -77,6 +77,11 @@ export async function POST(req: NextRequest) {
       ipHash,
       boost: site.referralBoost,
     });
+    // ShipItLoud's own list is "email me when it's live" only: tagged prelaunch, one launch-day email, not a setup.
+    if (pageSlug === site.waitlistSlug && result.code) {
+      const { supabaseAdmin } = await import('@/lib/supabase/server');
+      await supabaseAdmin().from('waitlist_signups').update({ prelaunch: true }).eq('referral_code', result.code);
+    }
     return NextResponse.json(result);
   } catch (err) {
     console.error('[waitlist] join failed', err);

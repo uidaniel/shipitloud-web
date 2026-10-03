@@ -5,8 +5,9 @@ import { NewWorkspaceForm } from './form';
 
 export const metadata: Metadata = { title: 'Add your product' };
 
-export default async function NewWorkspace() {
+export default async function NewWorkspace({ searchParams }: { searchParams: Promise<{ url?: string }> }) {
   await requireUser();
+  const { url } = await searchParams;
   return (
     <div className="pr-onb">
       <div className="pr-onb-card pr-fade-in">
@@ -14,7 +15,7 @@ export default async function NewWorkspace() {
         <div className="pr-steps" aria-label="Step 1 of 3"><i className="on" /><i /><i /></div>
         <h1>What are you launching?</h1>
         <p className="sub">Paste your product&apos;s link. We&apos;ll read it and set up everything else.</p>
-        <NewWorkspaceForm />
+        <NewWorkspaceForm url={(url ?? '').slice(0, 300)} />
       </div>
     </div>
   );

@@ -3,22 +3,25 @@
 import Link from 'next/link';
 import gsap from 'gsap';
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { currencies, plans, type Currency } from '@/lib/site';
+import { currencies, plans, site, type Currency } from '@/lib/site';
 
-// Usage caps and inclusions, PRD sections 11 and 14.
-const compare: { label: string; values: [string, string, string, string] }[] = [
-  { label: 'Billing', values: ['Free', 'One-time, per product', 'Monthly', 'Monthly'] },
-  { label: 'Demo videos', values: ['—', '3', '4 / month', '12 / month'] },
-  { label: 'Images and posters', values: ['5 / month', '60', '60 / month', '200 / month'] },
-  { label: 'AI drafts and replies', values: ['—', '100', '150 / month', '500 / month'] },
-  { label: 'Keyword monitors', values: ['—', '3 for 30 days', '3', '10'] },
-  { label: 'Products', values: ['1', '1', '1', '3'] },
-  { label: 'Custom domain', values: ['—', '✓', '✓', '✓'] },
-  { label: 'Remove ShipItLoud badge', values: ['—', '✓', '✓', '✓'] },
-  { label: 'Automatic listening (HN, Bluesky, Product Hunt…)', values: ['—', '—', '✓', '✓'] },
-  { label: 'X listening', values: ['—', '—', '—', '✓'] },
-  { label: 'Ads autopilot with hard caps', values: ['—', '—', '—', '✓'] },
-  { label: 'Weekly digest', values: ['—', '—', '✓', '✓'] },
+const start = '/signup?next=%2Fapp%2Fnew';
+
+// Usage caps and inclusions (PRD sections 11 and 14), keyed by plan so the column order follows `plans`.
+type Row = { label: string } & Record<'free' | 'grow' | 'scale' | 'launch_pass', string>;
+const compare: Row[] = [
+  { label: 'Billing', free: 'Free', grow: 'Monthly', scale: 'Monthly', launch_pass: 'One-time, per product' },
+  { label: 'Launch kit (waitlist, video, posters, posts, 30-day plan)', free: 'Preview', grow: 'First month', scale: 'First month', launch_pass: '✓' },
+  { label: 'Demo videos', free: '—', grow: '4 / month', scale: '12 / month', launch_pass: '3' },
+  { label: 'Images and posters', free: '5 / month', grow: '60 / month', scale: '200 / month', launch_pass: '60' },
+  { label: 'AI drafts and replies', free: '—', grow: '150 / month', scale: '500 / month', launch_pass: '100' },
+  { label: 'Warm leads', free: '3 / week', grow: 'All', scale: 'All', launch_pass: '30 days' },
+  { label: 'Products', free: '1', grow: '1', scale: '3', launch_pass: '1' },
+  { label: 'Custom domain, no badge', free: '—', grow: '✓', scale: '✓', launch_pass: '✓' },
+  { label: 'Automatic listening (HN, Bluesky, Product Hunt…)', free: '—', grow: '✓', scale: '✓', launch_pass: '—' },
+  { label: 'Weekly digest', free: '—', grow: '✓', scale: '✓', launch_pass: '—' },
+  { label: 'X listening, Creator CRM', free: '—', grow: '—', scale: '✓', launch_pass: '—' },
+  { label: 'Ads autopilot with hard caps', free: '—', grow: '—', scale: '✓', launch_pass: '—' },
 ];
 
 function guessCurrency(): Currency {
@@ -59,14 +62,15 @@ export function PricingSpace() {
   const [cur, setCur] = useState<Currency>('USD');
   const [open, setOpen] = useState(false);
   const keys = Object.keys(currencies) as Currency[];
+  const pass = plans.find((p) => p.id === 'launch_pass');
   useEffect(() => setCur(guessCurrency()), []);
 
   return (
     <div className="pricing">
       <div className="pricing-top" data-reveal>
         <div>
-          <h2 className="title">Pay once to launch. Monthly to keep growing.</h2>
-          <p className="kicker">No credits. Clear monthly limits. Cancel any time.</p>
+          <h2 className="title">Marketing that never stops.</h2>
+          <p className="kicker">Start free. Try Grow free for 7 days. Cancel any time.</p>
         </div>
         <div className="cur" role="group" aria-label="Currency" style={{ ['--i' as string]: keys.indexOf(cur) }}>
           <span className="cur-pill" aria-hidden="true" />
@@ -79,30 +83,42 @@ export function PricingSpace() {
       </div>
 
       <div className="plans-grid">
-        {plans.map((p) => (
+        {plans.filter((p) => p.id !== 'launch_pass').map((p) => (
           <article key={p.id} className={`plan-card${p.featured ? ' is-featured' : ''}`} onPointerMove={spotlight} data-plan>
             <div className="plan-inner">
               <div className="plan-head">
-                <span className="plan-mission">{p.period === 'one-time' ? 'One-time' : p.period === 'month' ? 'Monthly' : 'Free forever'}</span>
-                {p.featured && <span className="plan-flag">Best to start</span>}
+                <span className="plan-mission">{p.period === 'month' ? 'Monthly' : 'Free forever'}</span>
+                {p.featured && <span className="plan-flag">Recommended</span>}
               </div>
               <h3 className="plan-name">{p.name}</h3>
               <div className="plan-price">
                 <span className="plan-cur">{currencies[cur]}</span>
                 <Price value={p.price[cur]} />
-                <span className="plan-per">{p.period === 'month' ? '/ month' : p.period === 'one-time' ? 'one-time' : 'forever'}</span>
+                <span className="plan-per">{p.period === 'month' ? '/ month' : 'forever'}</span>
               </div>
               <p className="plan-sum">{p.summary}</p>
+              {p.id === 'grow' && <p className="plan-trial">7-day free trial, card required</p>}
               <ul className="plan-list">
                 {p.features.map((f) => <li key={f}>{f}</li>)}
               </ul>
-              <Link className={`btn ${p.featured ? 'btn-lime' : 'btn-line'}`} href="/#join">
-                {p.id === 'free' ? 'Start free at launch' : 'Join the waitlist'}
+              <Link className={`btn ${p.featured ? 'btn-lime' : 'btn-line'}`} href={site.launch.live ? start : '/#join'}>
+                {!site.launch.live ? 'Email me when it’s live' : p.id === 'grow' ? 'Start your free trial' : 'Start free'}
               </Link>
             </div>
           </article>
         ))}
       </div>
+
+      {pass && (
+        <article className="pass-card" data-reveal>
+          <div>
+            <span className="plan-mission">One-time</span>
+            <h3 className="plan-name">{pass.name} <span className="pass-price">{currencies[cur]}<Price value={pass.price[cur]} /> per product</span></h3>
+            <p className="plan-sum">{pass.summary} {pass.features.join(' · ')}.</p>
+          </div>
+          <Link className="btn btn-line" href={site.launch.live ? start : '/#join'}>{site.launch.live ? 'Get the Launch Pass' : 'Email me when it’s live'}</Link>
+        </article>
+      )}
 
       <div className="perks" data-reveal>
         <div className="perk">
@@ -133,7 +149,7 @@ export function PricingSpace() {
                 {compare.map((row) => (
                   <tr key={row.label}>
                     <th scope="row">{row.label}</th>
-                    {row.values.map((v, i) => <td key={i} className={v === '✓' ? 'yes' : v === '—' ? 'no' : ''}>{v}</td>)}
+                    {plans.map((p) => { const v = row[p.id]; return <td key={p.id} className={v === '✓' ? 'yes' : v === '—' ? 'no' : ''}>{v}</td>; })}
                   </tr>
                 ))}
               </tbody>

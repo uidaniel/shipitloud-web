@@ -13,11 +13,17 @@ export const site = {
   waitlistSlug: 'shipitloud',
   legalEntity: 'MOTX Studios',
   contactEmail: 'hello@shipitloud.com',
-  // Self-launch test targets from the PRD (section 3).
-  goals: { signups: 200, signupDays: 30, paying: 20, payingDays: 60 },
+  // Self-launch test targets (PRD section 3): free setups, not waitlist signups. ShipItLoud has no waitlist of its own.
+  goals: { setups: 200, setupDays: 30, paying: 20, payingDays: 60 },
+  // The front door is "paste your URL → Start free" (10-minute setup). Optional prelaunch mode (PRD v5): set
+  // NEXT_PUBLIC_LAUNCHED=0 to show "Launching [date]" with an "Email me when it's live" box instead.
+  launch: {
+    live: process.env.NEXT_PUBLIC_LAUNCHED !== '0',
+    date: process.env.NEXT_PUBLIC_LAUNCH_DATE || null,   // YYYY-MM-DD
+  },
   referralBoost: 5,
   // Stored with every signup as the record of what the person agreed to.
-  consentText: 'Email me about the ShipItLoud launch and early access. Unsubscribe any time.',
+  consentText: 'Email me once when ShipItLoud is live.',
 } as const;
 
 export type Currency = 'USD' | 'GBP' | 'EUR';
@@ -34,32 +40,24 @@ export interface PlanInfo {
   featured?: boolean;
 }
 
-// PRD section 14 price list and caps.
+// PRD section 11: Grow is the hero ("Recommended"); Launch Pass is a smaller one-time option below the plans.
 export const plans: PlanInfo[] = [
   {
     id: 'free',
     name: 'Free',
     price: { USD: 0, GBP: 0, EUR: 0 },
     period: null,
-    summary: 'A waitlist that grows itself.',
-    features: ['One waitlist page', 'Referral system', '5 posters a month', 'ShipItLoud badge'],
-  },
-  {
-    id: 'launch_pass',
-    name: 'Launch Pass',
-    price: { USD: 199, GBP: 159, EUR: 179 },
-    period: 'one-time',
-    summary: 'Everything for launch day.',
-    features: ['Full launch kit', '3 demo videos', '60 images, 100 AI drafts', '30-day launch plan', 'Custom domain, no badge', 'First month of Grow free'],
-    featured: true,
+    summary: 'See what we’d do for your product.',
+    features: ['10-minute setup: analysis, plan and first assets', '3 free first wins', 'Waitlist page with referrals', '5 posters a month', '3 warm leads a week'],
   },
   {
     id: 'grow',
     name: 'Grow',
     price: { USD: 49, GBP: 39, EUR: 45 },
     period: 'month',
-    summary: 'Marketing that keeps running.',
-    features: ['Listening + drafted replies', 'Content engine + SEO blog', 'Reddit via Chrome extension', '4 videos, 60 images a month', 'Weekly digest'],
+    summary: 'Marketing that never stops.',
+    features: ['Full launch kit in your first month', 'Listening + drafted replies', 'Content engine, SEO blog, UGC format remix', 'Reddit via Chrome extension', 'Email, comment-to-DM, weekly digest'],
+    featured: true,
   },
   {
     id: 'scale',
@@ -67,6 +65,15 @@ export const plans: PlanInfo[] = [
     price: { USD: 149, GBP: 119, EUR: 139 },
     period: 'month',
     summary: 'Put budget behind what works.',
-    features: ['Everything in Grow', 'Ads autopilot with hard caps', 'X listening', '12 videos, 200 images a month', 'Up to 3 products'],
+    features: ['Everything in Grow', 'Ads autopilot with hard caps', 'X listening and Creator CRM', '12 videos, 200 images a month', 'Up to 3 products'],
+  },
+  {
+    id: 'launch_pass',
+    name: 'Launch Pass',
+    price: { USD: 199, GBP: 159, EUR: 179 },
+    period: 'one-time',
+    summary: 'Just launching? One-time kit.',
+    features: ['Full launch kit and 30-day plan', 'Demo video and launch posts', 'Launch support', 'Custom domain, no badge', 'First month of Grow free'],
   },
 ];
+

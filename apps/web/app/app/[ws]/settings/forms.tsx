@@ -187,7 +187,7 @@ export function ExtensionForm({ ws, tokens }: { ws: string; tokens: { id: string
             </div>
           </div>
         ) : (
-          <ol className="pr-steps">
+          <ol className="pr-howto">
             <li>Install the ShipItLoud extension in Chrome.</li>
             <li>Create a connection below and paste it into the extension.</li>
             <li>Open Reddit. Posts worth a reply show up in the ShipItLoud panel.</li>

@@ -65,6 +65,12 @@ export async function POST(req: NextRequest) {
     } catch { /* tracking must never break the founder's site */ }
     if (name === 'identify') return ok();
   }
+  // Meta Conversions API: a consented signup from someone who clicked a Meta ad (fbclid) is sent server-side.
+  const fbc = clip(b.fbc, 200);
+  if (type === 'signup' && b.consent === 'granted' && fbc && /^fb\.1\.\d+\.[\w-]+$/.test(fbc)) {
+    const { count: running } = await db.from('ad_campaigns').select('id', { count: 'exact', head: true }).eq('workspace_id', ws).eq('platform', 'meta').in('status', ['active', 'paused', 'capped']);
+    if (running) await db.rpc('enqueue_job', { p_workspace: ws, p_type: 'ads.capi', p_payload: { event_id: `${visitor ?? 'v'}:${new Date().toISOString().slice(0, 10)}`, fbc, consent: 'granted', url: clip(b.path, 300) }, p_run_at: new Date().toISOString(), p_key: `capi:${ws}:${visitor}:${new Date().toISOString().slice(0, 10)}` });
+  }
   await db.from('track_events').insert({
     workspace_id: ws, type, name: type === 'custom' ? clip(b.name, 40) : null, visitor, source, medium, campaign, ref_code: ref,
     path: clip(b.path, 300), referrer_host: clip(b.referrer, 120),

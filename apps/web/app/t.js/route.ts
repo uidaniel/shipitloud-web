@@ -10,16 +10,17 @@ const SNIPPET = `(function () {
   var api = new URL(s.src).origin + '/api/t';
   var store = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
   var q = new URLSearchParams(location.search);
-  var touch = { source: q.get('utm_source'), medium: q.get('utm_medium'), campaign: q.get('utm_campaign'), ref: q.get('sil') };
+  var touch = { source: q.get('utm_source'), medium: q.get('utm_medium'), campaign: q.get('utm_campaign'), ref: q.get('sil'), fbclid: q.get('fbclid'), at: Date.now() };
   if (!touch.source && document.referrer) { try { var h = new URL(document.referrer).hostname.replace(/^www\\./, ''); if (h && h !== location.hostname.replace(/^www\\./, '')) { touch.source = h; touch.medium = 'referral'; } } catch (e) {} }
+  if (touch.fbclid && !touch.source) { touch.source = 'facebook'; touch.medium = 'paid'; }
   var first = null; try { first = JSON.parse(store.get('sil_first') || 'null'); } catch (e) {}
-  if (!first && (touch.source || touch.ref)) { first = touch; store.set('sil_first', JSON.stringify(first)); }
+  if (!first && (touch.source || touch.ref || touch.fbclid)) { first = touch; store.set('sil_first', JSON.stringify(first)); }
   var t = first || touch;
   var vid = store.get('sil_vid'); if (!vid) { vid = Math.random().toString(36).slice(2) + Date.now().toString(36); store.set('sil_vid', vid); }
   var quiet = navigator.globalPrivacyControl === true || navigator.doNotTrack === '1';
   function send(type, name) {
     if (quiet && type === 'pageview') return;
-    var body = JSON.stringify({ key: key, type: type, name: name || null, visitor: vid, user: store.get('sil_uid'), path: location.pathname, referrer: document.referrer ? (function () { try { return new URL(document.referrer).hostname; } catch (e) { return null; } })() : null, source: t.source, medium: t.medium, campaign: t.campaign, ref: t.ref });
+    var body = JSON.stringify({ key: key, type: type, name: name || null, visitor: vid, user: store.get('sil_uid'), consent: store.get('sil_consent'), fbc: t.fbclid ? 'fb.1.' + (t.at || Date.now()) + '.' + t.fbclid : null, path: location.pathname, referrer: document.referrer ? (function () { try { return new URL(document.referrer).hostname; } catch (e) { return null; } })() : null, source: t.source, medium: t.medium, campaign: t.campaign, ref: t.ref });
     if (navigator.sendBeacon && navigator.sendBeacon(api, new Blob([body], { type: 'text/plain' }))) return;
     try { fetch(api, { method: 'POST', body: body, keepalive: true, mode: 'no-cors', headers: { 'content-type': 'text/plain' } }); } catch (e) {}
   }

@@ -55,7 +55,7 @@ export function WebhookForm({ ws, url }: { ws: string; url: string }) {
       <input type="hidden" name="ws" value={ws} />
       <div className="pr-section-h"><h2>Instant updates from GitHub (optional)</h2><p>Add a webhook so releases, and pushes with &ldquo;feat:&rdquo; commits, turn into posts right away.</p></div>
       <div className="pr-section-b" style={{ display: 'grid', gap: 12 }}>
-        <ol className="pr-steps">
+        <ol className="pr-howto">
           <li>In your repo: Settings → Webhooks → Add webhook.</li>
           <li>Payload URL is the link below. Content type: application/json.</li>
           <li>Paste the secret, choose &ldquo;Releases&rdquo; and &ldquo;Pushes&rdquo;, then save.</li>

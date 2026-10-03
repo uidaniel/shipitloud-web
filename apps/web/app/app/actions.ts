@@ -40,9 +40,11 @@ export async function createWorkspace(_: unknown, form: FormData): Promise<FormS
   const name = str(form.get('product_name'), 80);
   const rawUrl = str(form.get('url'), 300);
   const url = normalizeUrl(rawUrl);
+  const fit = (['launching_soon', 'already_live', 'exploring'] as const).find((f) => f === form.get('fit'));
+  if (!fit) return fail(form, 'Pick the one that fits you. It decides what we do first.');
   if (!name) return fail(form, 'Give your product a name.');
   if (rawUrl && !url) return fail(form, 'That link doesn’t look right. Try something like yourproduct.com');
-  const { data, error } = await sb.from('workspaces').insert({ owner_id: user.id, product_name: name, url }).select('id').single();
+  const { data, error } = await sb.from('workspaces').insert({ owner_id: user.id, product_name: name, url, fit }).select('id').single();
   if (error || !data) return fail(form, 'Couldn’t create your workspace. Try again.');
   await Promise.all([
     sb.from('brand_brains').insert({ workspace_id: data.id, status: url ? 'building' : 'idle' }),
@@ -141,7 +143,10 @@ export async function saveAutomation(_: unknown, form: FormData): Promise<FormSt
 export async function setKillSwitch(form: FormData) {
   const wsId = str(form.get('ws'));
   const { sb } = await requireWorkspace(wsId);
-  await sb.from('workspaces').update({ kill_switch: form.get('on') === 'true' }).eq('id', wsId);
+  const on = form.get('on') === 'true';
+  await sb.from('workspaces').update({ kill_switch: on }).eq('id', wsId);
+  // The kill switch also pauses every running ad on the platforms, not just future actions.
+  if (on) await enqueue(sb, wsId, 'ads.kill', {}, `kill:${wsId}:${Date.now()}`);
   revalidatePath(`/app/${wsId}`, 'layout');
 }
 
@@ -827,4 +832,78 @@ export async function draftLifecycle(form: FormData) {
   const { sb } = await requireWorkspace(wsId);
   await enqueue(sb, wsId, 'lifecycle.draft', {}, `lifedraft:${wsId}:${Date.now()}`);
   revalidatePath(`/app/${wsId}/customers`);
+}
+
+// ---------------------------------------------------------------- ads
+const REGIONS = new Set(['US', 'GB', 'CA', 'AU', 'IE', 'DE', 'FR', 'NL', 'ES', 'IT', 'SE', 'NG']);
+const dollars = (v: FormDataEntryValue | null) => Math.round(Number(String(v ?? '').replace(/[^\d.]/g, '')) * 100);
+
+export async function createAdCampaign(_: unknown, form: FormData): Promise<FormState> {
+  const wsId = str(form.get('ws'));
+  const { sb, ws } = await requireWorkspace(wsId);
+  if (ws.plan !== 'scale') return fail(form, 'Ads autopilot is on the Scale plan.');
+  const platform = form.get('platform') === 'google' ? 'google' : 'meta';
+  const goal = (['signups', 'traffic', 'installs'] as const).find((g) => g === form.get('goal')) ?? 'signups';
+  const landing = normalizeUrl(str(form.get('landing_url'), 300));
+  if (!landing) return fail(form, 'Add the page the ads should send people to.');
+  const regions = form.getAll('regions').map(String).filter((r) => REGIONS.has(r));
+  if (!regions.length) return fail(form, 'Pick at least one country.');
+  const daily = dollars(form.get('daily_cap'));
+  const total = dollars(form.get('total_cap'));
+  if (!daily || daily < 100) return fail(form, 'The daily cap must be at least $1.');
+  if (daily > 100_000) return fail(form, 'Keep the daily cap under $1,000 to start.');
+  if (!total || total < daily) return fail(form, 'The total cap must be at least one day’s budget.');
+  if (total > daily * 90) return fail(form, 'The total cap is more than 90 days of spend. Lower it, or raise the daily cap.');
+  const { modeFor } = await import('@shipitloud/engine');
+  const { data: c, error } = await supabaseAdmin().from('ad_campaigns').insert({
+    workspace_id: wsId, platform, goal, landing_url: landing, regions, daily_cap_cents: daily, total_cap_cents: total, mode: modeFor(daily),
+    name: str(form.get('name'), 80) || `${goal === 'traffic' ? 'Traffic' : goal === 'installs' ? 'Installs' : 'Signups'} · ${regions.join(', ')}`,
+  }).select('id').single();
+  if (error || !c) return fail(form, 'Couldn’t create the campaign. Try again.');
+  await enqueue(sb, wsId, 'ads.start', { campaign_id: c.id }, `adstart:${c.id}`);
+  revalidatePath(`/app/${wsId}/ads`);
+  return { ok: true };
+}
+
+async function ownCampaign(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const { data: c } = await sb.from('ad_campaigns').select('id, status').eq('workspace_id', wsId).eq('id', str(form.get('id'), 40)).maybeSingle();
+  return { wsId, sb, c };
+}
+
+/** The founder's go-ahead: launch with the creatives they approved. */
+export async function approveAdLaunch(form: FormData) {
+  const { wsId, sb, c } = await ownCampaign(form);
+  if (!c || !['ready', 'failed'].includes(c.status)) return;
+  const at = new Date().toISOString();
+  await supabaseAdmin().from('ad_campaigns').update({ approved_at: at, error: null }).eq('id', c.id);
+  await supabaseAdmin().from('ad_events').insert({ workspace_id: wsId, campaign_id: c.id, action: 'launch', actor: 'founder', reason: 'You approved the launch' });
+  await enqueue(sb, wsId, 'ads.launch', { campaign_id: c.id }, `adlaunch:${c.id}:${at}`);
+  revalidatePath(`/app/${wsId}/ads`);
+}
+
+export async function pauseAdCampaign(form: FormData) {
+  const { wsId, sb, c } = await ownCampaign(form);
+  if (c?.status === 'active') await enqueue(sb, wsId, 'ads.pause', { campaign_id: c.id }, `adpause:${c.id}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/ads`);
+}
+
+export async function resumeAdCampaign(form: FormData) {
+  const { wsId, sb, c } = await ownCampaign(form);
+  if (c?.status === 'paused') await enqueue(sb, wsId, 'ads.resume', { campaign_id: c.id }, `adresume:${c.id}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/ads`);
+}
+
+export async function stopAllAds(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'ads.kill', {}, `kill:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/ads`);
+}
+
+export async function moreAdCreatives(form: FormData) {
+  const { wsId, sb, c } = await ownCampaign(form);
+  if (c) await enqueue(sb, wsId, 'ads.more', { campaign_id: c.id }, `admore:${c.id}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/ads`);
 }

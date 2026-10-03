@@ -13,7 +13,7 @@ export function Header() {
           <Link className="link" href="/#how">How it works</Link>
           <Link className="link" href="/#kit">Examples</Link>
           <Link className="link" href="/pricing">Pricing</Link>
-          <Link className="btn btn-primary btn-sm" href="/#join">Join waitlist</Link>
+          <Link className="btn btn-primary btn-sm" href={site.launch.live ? '/signup?next=%2Fapp%2Fnew' : '/#join'}>{site.launch.live ? 'Start free' : 'Get notified'}</Link>
         </nav>
       </div>
     </header>

@@ -58,7 +58,7 @@ function PipeIcon({ name }: { name: (typeof pipeline)[number]['icon'] }) {
 
 export function LaunchPage({ stats }: { stats: WaitlistStats }) {
   const root = useRef<HTMLDivElement>(null);
-  const goal = site.goals.signups;
+  const goal = site.goals.setups;
   const pct = Math.min(1, stats.total / goal);
 
   // Smooth scroll; its velocity drives the starfield streaks.
@@ -208,7 +208,7 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
           <div className="sp-wrap hero-grid">
             <div className="hero-copy">
               <p className="telemetry prehide">
-                <span className="live-dot" />Early access opens soon
+                <span className="live-dot" />{site.launch.live ? 'Live now · free 10-minute setup' : site.launch.date ? `Launching ${new Date(`${site.launch.date}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })}` : 'Launching soon'}
               </p>
               <h1 id="hero-h" className="hero-title prehide">
                 <Chars text="You built it." className="line-1" />
@@ -219,7 +219,7 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
               <p className="hero-sub prehide">Paste your product. Get a launch kit, a 30-day plan and your first users.</p>
               <div className="hero-form prehide">
                 <Suspense>
-                  <JoinForm onInk meta="Free waitlist page · No card · Early access first" />
+                  <JoinForm onInk />
                 </Suspense>
               </div>
             </div>
@@ -375,10 +375,10 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
             <div>
               <h2 id="mom-h" className="title" data-reveal>We&apos;re launching with it too.</h2>
               <p className="kicker" data-reveal>
-                We&apos;re launching ShipItLoud with ShipItLoud. Goal: {goal} signups in {site.goals.signupDays} days, then {site.goals.paying} paying in {site.goals.payingDays}.
+                We&apos;re launching ShipItLoud with ShipItLoud. Goal: {goal} free setups in {site.goals.setupDays} days, then {site.goals.paying} paying in {site.goals.payingDays}.
               </p>
               <div className="sources" data-reveal>
-                <p className="sources-h">Where signups come from</p>
+                <p className="sources-h">Where setups come from</p>
                 {stats.bySource.length ? (
                   <ul>
                     {stats.bySource.slice(0, 5).map((s) => (
@@ -390,11 +390,11 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="sources-empty">No signups yet. Be the first; your referrals show up here.</p>
+                  <p className="sources-empty">Counting starts on launch day.</p>
                 )}
               </div>
             </div>
-            <div className="orbit-box" aria-label={`${stats.total} of ${goal} waitlist signups`}>
+            <div className="orbit-box" aria-label={`${stats.total} of ${goal} free setups`}>
               <svg viewBox="0 0 320 320" className="orbit">
                 <circle cx="160" cy="160" r="130" className="orbit-track" />
                 <circle cx="160" cy="160" r="130" className="orbit-fill" strokeDasharray={2 * Math.PI * 130} strokeDashoffset={2 * Math.PI * 130} transform="rotate(-90 160 160)" />
@@ -407,14 +407,14 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
                 {stats.total >= 25 ? (
                   <>
                     <span className="orbit-num mono" data-total>{stats.total.toLocaleString('en-US')}</span>
-                    <span className="orbit-of mono">/ {goal} signups</span>
+                    <span className="orbit-of mono">/ {goal} setups</span>
                     <span className="orbit-week mono">+{stats.last7} this week</span>
                   </>
                 ) : (
                   <>
                     <span className="orbit-num orbit-day">Day 0</span>
-                    <span className="orbit-of">The waitlist just opened</span>
-                    <span className="orbit-week">{stats.total ? `${stats.total} early ${stats.total === 1 ? 'signup' : 'signups'} so far` : 'Be one of the first'}</span>
+                    <span className="orbit-of">{site.launch.live ? 'We just launched' : 'Counting starts at launch'}</span>
+                    <span className="orbit-week">{stats.total ? `${stats.total} ${stats.total === 1 ? 'setup' : 'setups'} so far` : site.launch.live ? 'Be one of the first' : 'Prelaunch emails don’t count'}</span>
                   </>
                 )}
               </div>
