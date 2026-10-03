@@ -45,6 +45,7 @@ export function Sidebar({ ws, pending, meter, email, notifications, children }: 
   const nav = [
     { href: `${base}/inbox`, label: 'Inbox', icon: Icon.inbox, count: pending },
     { href: `${base}/activity`, label: 'Activity', icon: Icon.activity },
+    { href: `${base}/growth`, label: 'Growth plan', icon: Icon.target },
     { href: `${base}/brand`, label: 'Brand', icon: Icon.brand },
     { href: `${base}/kit`, label: 'Launch kit', icon: Icon.kit },
     { href: `${base}/plan`, label: 'Launch plan', icon: Icon.plan },
@@ -56,7 +57,7 @@ export function Sidebar({ ws, pending, meter, email, notifications, children }: 
     { href: `${base}/ads`, label: 'Ads', icon: Icon.megaphone },
     { href: `${base}/analytics`, label: 'Momentum', icon: Icon.chart },
   ];
-  const title = path.endsWith('/activity') ? 'Activity' : path.endsWith('/settings') ? 'Settings' : path.endsWith('/brand') ? 'Brand' : path.endsWith('/kit') ? 'Launch kit' : path.endsWith('/plan') ? 'Launch plan' : path.endsWith('/waitlist') ? 'Waitlist' : path.endsWith('/listening') ? 'Listening' : path.endsWith('/content') ? 'Content' : path.includes('/blog') ? 'Blog' : path.endsWith('/analytics') ? 'Momentum' : path.endsWith('/customers') ? 'Customers' : path.endsWith('/ads') ? 'Ads' : 'Inbox';
+  const title = path.endsWith('/activity') ? 'Activity' : path.endsWith('/settings') ? 'Settings' : path.endsWith('/brand') ? 'Brand' : path.endsWith('/kit') ? 'Launch kit' : path.endsWith('/plan') ? 'Launch plan' : path.endsWith('/waitlist') ? 'Waitlist' : path.endsWith('/listening') ? 'Listening' : path.endsWith('/content') ? 'Content' : path.includes('/blog') ? 'Blog' : path.endsWith('/analytics') ? 'Momentum' : path.endsWith('/customers') ? 'Customers' : path.endsWith('/ads') ? 'Ads' : path.endsWith('/growth') ? 'Growth plan' : 'Inbox';
 
   return (
     <>

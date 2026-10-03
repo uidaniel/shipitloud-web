@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: 'Create your account', robots: { inde
 export default async function Signup({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;
   return (
-    <AuthShell title="Create your account" sub="Paste your product next. Your launch kit is about 15 minutes away."
+    <AuthShell title="Create your account" sub="Your growth plan is about 10 minutes away."
       foot={<>Already have an account? <Link href="/login">Log in</Link></>}>
       <SignupForm next={next?.startsWith('/app') ? next : '/app/new'} />
     </AuthShell>

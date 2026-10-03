@@ -53,5 +53,10 @@ export function findUnsupportedClaims(text: string, facts: string): string[] {
   if (/\b(?:a|one of our|our|my|some)\s+(?:beta\s+)?(?:users?|customers?|clients?|testers?)\s+(?:asked|told|said|wrote|messaged|requested|kept|wanted|emailed)\b/i.test(text)) {
     flags.add('A story about a user: confirm it really happened');
   }
+  // The founder's own backstory ("a year ago I…", "we almost built…") must be real too.
+  if (/\b(?:a (?:year|month|week) ago|\d+ (?:years?|months?|weeks?) ago|last (?:year|month|summer)|when (?:I|we) (?:started|was|were|first|built)|I (?:realized|realised|used to|spent|was (?:sending|spending|chasing|doing|building))|we (?:almost|nearly|once) (?:built|shipped|gave up)|we (?:tried|spent) \w+)\b/i.test(text)
+    && !/\[[^\]]+\]/.test(text)) {
+    flags.add('A story about your past: confirm it really happened');
+  }
   return [...flags];
 }

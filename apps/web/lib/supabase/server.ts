@@ -50,6 +50,7 @@ export interface Workspace {
   product_name: string;
   url: string | null;
   plan: 'free' | 'launch_pass' | 'grow' | 'scale';
+  fit: 'launching_soon' | 'already_live' | 'exploring' | null;
   stage: 'launch' | 'grow';
   trust_mode: 'manual' | 'trust' | 'full';
   trust_threshold: number;

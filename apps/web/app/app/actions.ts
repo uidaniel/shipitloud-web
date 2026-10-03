@@ -51,7 +51,9 @@ export async function createWorkspace(_: unknown, form: FormData): Promise<FormS
     sb.from('brand_kits').insert({ workspace_id: data.id }),
     sb.from('voice_profiles').insert({ workspace_id: data.id }),
   ]);
-  if (url) await enqueue(sb, data.id, 'brand.build', {}, `brand:${data.id}:1`);
+  // The 10-minute setup (PRD section 23): one job reads the site and builds the brand brain + growth analysis.
+  await sb.from('setup_progress').insert([{ workspace_id: data.id, step: 'paste', completed_at: new Date().toISOString() }]);
+  if (url) await enqueue(sb, data.id, 'setup.analyze', {}, `setup:${data.id}:1`);
   redirect(`/app/setup/${data.id}`);
 }
 
@@ -252,7 +254,7 @@ export async function buildFromDescription(_: unknown, form: FormData): Promise<
   const description = str(form.get('description'), 3000);
   if (description.length < 30) return fail(form, 'Tell us a bit more: what it does and who it’s for (a few sentences).');
   await sb.from('brand_brains').update({ description, status: 'building', error: null }).eq('workspace_id', wsId);
-  await enqueue(sb, wsId, 'brand.build', {}, `brand:${wsId}:${Date.now()}`);
+  await enqueue(sb, wsId, 'setup.analyze', {}, `setup:${wsId}:${Date.now()}`);
   revalidatePath(`/app/setup/${wsId}`);
   return {};
 }
@@ -285,7 +287,7 @@ export async function saveBrand(_: unknown, form: FormData): Promise<FormState> 
   await sb.from('voice_profiles').update({ tone: str(form.get('tone'), 120), updated_at: now }).eq('workspace_id', wsId);
   if (error) return fail(form, 'Couldn’t save. Try again.');
   revalidatePath(`/app/${wsId}`, 'layout');
-  if (confirm) redirect(`/app/${wsId}/inbox`);
+  if (confirm) { await stepDone(sb, wsId, 'summary'); redirect(`/app/setup/${wsId}?step=analysis`); }
   return { ok: true };
 }
 
@@ -906,4 +908,59 @@ export async function moreAdCreatives(form: FormData) {
   const { wsId, sb, c } = await ownCampaign(form);
   if (c) await enqueue(sb, wsId, 'ads.more', { campaign_id: c.id }, `admore:${c.id}:${Date.now()}`);
   revalidatePath(`/app/${wsId}/ads`);
+}
+
+// ---------------------------------------------------------------- the 10-minute setup (PRD section 23)
+const SETUP_STEPS = ['understand', 'summary', 'analysis', 'channels', 'connect', 'wins', 'live'] as const;
+type SetupStep = (typeof SETUP_STEPS)[number];
+
+async function stepDone(sb: Awaited<ReturnType<typeof requireUser>>['sb'], ws: string, step: SetupStep) {
+  const now = new Date().toISOString();
+  await sb.rpc('setup_step', { p_ws: ws, p_step: step, p_done: true });
+  const next = SETUP_STEPS[SETUP_STEPS.indexOf(step) + 1];
+  if (next) await sb.rpc('setup_step', { p_ws: ws, p_step: next, p_done: false });
+  return { next, now };
+}
+
+/** Confirm or continue a setup screen and go to the next one. */
+export async function setupNext(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const step = SETUP_STEPS.find((s) => s === form.get('step'));
+  const { sb } = await requireWorkspace(wsId);
+  if (!step) return;
+  const { next } = await stepDone(sb, wsId, step);
+  if (step === 'connect') await enqueue(sb, wsId, 'setup.wins', {}, `wins:${wsId}`);
+  redirect(next ? `/app/setup/${wsId}?step=${next}` : `/app/${wsId}/plan`);
+}
+
+/** Accept the channel plan, with the founder's toggles. */
+export async function acceptChannels(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const { data: plan } = await sb.from('channel_plans').select('channels').eq('workspace_id', wsId).single();
+  const on = new Set(form.getAll('on').map(String));
+  const channels = ((plan?.channels ?? []) as { id: string; enabled: boolean }[]).map((c) => ({ ...c, enabled: on.has(c.id) }));
+  await sb.from('channel_plans').update({ channels, accepted_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('workspace_id', wsId);
+  const { next } = await stepDone(sb, wsId, 'channels');
+  redirect(`/app/setup/${wsId}?step=${next}`);
+}
+
+/** Run the growth analysis again (after product changes, or monthly). */
+export async function rerunAnalysis(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  await enqueue(sb, wsId, 'setup.analyze', {}, `setup:${wsId}:${Date.now()}`);
+  revalidatePath(`/app/${wsId}/growth`);
+  revalidatePath(`/app/setup/${wsId}`);
+}
+
+/** Change which channels the plan uses (Growth plan page). */
+export async function saveChannels(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { sb } = await requireWorkspace(wsId);
+  const { data: plan } = await sb.from('channel_plans').select('channels').eq('workspace_id', wsId).single();
+  const on = new Set(form.getAll('on').map(String));
+  const channels = ((plan?.channels ?? []) as { id: string; enabled: boolean }[]).map((c) => ({ ...c, enabled: on.has(c.id) }));
+  await sb.from('channel_plans').update({ channels, accepted_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('workspace_id', wsId);
+  revalidatePath(`/app/${wsId}/growth`);
 }

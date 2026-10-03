@@ -275,3 +275,60 @@ button, input { font: inherit; color: inherit; }
 /* Prelaunch: "Email me when it's live" confirmation. */
 .join-done { padding: 16px 18px; border-radius: 16px; border: 1px solid var(--sil-line); background: var(--sil-surface); font-size: 15px; line-height: 1.5; color: var(--sil-muted); }
 .join-done b { color: var(--sil-text); }
+/* "Which fits you?" on the free analysis (PRD section 23). */
+.join-fit { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 8px 0; padding: 0; border: 0; min-width: 0; }
+.join-fit legend { width: 100%; margin-bottom: 8px; padding: 0; font-size: 13px; font-weight: 600; color: var(--sil-text); }
+.join-fit label { position: relative; cursor: pointer; }
+.join-fit input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.join-fit span { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--sil-line); font-size: 13px; color: var(--sil-muted); transition: border-color .15s, color .15s, background .15s; }
+.join-fit input:checked + span { border-color: var(--sil-violet); color: var(--sil-text); background: rgba(91,61,245,.12); }
+.join-fit input:focus-visible + span { outline: 2px solid var(--sil-violet); outline-offset: 2px; }
+.join-meta a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.on-ink .join-fit legend { color: var(--sil-paper); }
+.on-ink .join-fit span { border-color: #2c2c36; color: #a1a1ab; }
+.on-ink .join-fit input:checked + span { color: var(--sil-paper); background: rgba(91,61,245,.25); border-color: var(--sil-violet); }
+.on-ink .join-url b { color: var(--sil-paper); font-weight: 500; }
+
+/* Free analysis popup (after "Analyse it free"). Rendered on <body>, dark like the site. */
+.ja-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; background: rgba(5,5,8,.72); backdrop-filter: blur(6px); animation: ja-fade .18s ease both; }
+.ja-dialog { position: relative; width: 100%; max-width: 460px; max-height: calc(100vh - 32px); overflow: auto; padding: 28px 26px 22px; border-radius: 22px; background: #121218; border: 1px solid #2a2a34; color: var(--sil-paper); box-shadow: 0 30px 80px rgba(0,0,0,.5); animation: ja-pop .22s cubic-bezier(.2,.9,.2,1) both; }
+.ja-dialog h2 { margin: 0; font-size: 24px; letter-spacing: -0.03em; line-height: 1.15; }
+.ja-sub { margin: 6px 0 20px; font-size: 14px; color: #a1a1ab; overflow-wrap: anywhere; }
+.ja-sub b { color: var(--sil-paper); font-weight: 500; }
+.ja-x { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(245,245,242,.06); color: #a1a1ab; font-size: 20px; line-height: 1; cursor: pointer; }
+.ja-x:hover { color: var(--sil-paper); background: rgba(245,245,242,.12); }
+.ja-dialog form { display: grid; gap: 14px; }
+.ja-fit { margin: 0; padding: 0; border: 0; display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.ja-fit legend { width: 100%; padding: 0; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+.ja-fit label { position: relative; cursor: pointer; }
+.ja-fit input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.ja-fit span { display: inline-flex; padding: 9px 14px; border-radius: 999px; border: 1px solid #2c2c36; font-size: 13.5px; color: #c4c4cc; transition: border-color .15s, background .15s, color .15s; }
+.ja-fit input:checked + span { border-color: var(--sil-violet); background: rgba(91,61,245,.25); color: var(--sil-paper); }
+.ja-fit input:focus-visible + span { outline: 2px solid var(--sil-violet); outline-offset: 2px; }
+.ja-label { font-size: 14px; font-weight: 600; margin-top: 4px; }
+.ja-input { height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid #2c2c36; background: #0d0d12; color: var(--sil-paper); font: inherit; font-size: 15px; margin-top: -6px; }
+.ja-input:focus { outline: none; border-color: var(--sil-violet); }
+.ja-check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: #a1a1ab; line-height: 1.45; cursor: pointer; }
+.ja-check input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--sil-violet); flex: none; }
+.ja-check a, .ja-skip a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.ja-error { margin: 0; font-size: 13px; color: #f87171; }
+.ja-dialog .btn.ja-go { width: 100%; justify-content: center; height: 50px; font-size: 16px; background: #c6ff3d; color: #0d0d12; font-weight: 600; border: 0; }
+.ja-dialog .btn.ja-go:hover { background: #b4f02b; }
+.ja-dialog .btn.ja-go[disabled] { opacity: .7; }
+.ja-skip { margin: 0; text-align: center; font-size: 13px; color: #7a7a85; }
+@keyframes ja-fade { from { opacity: 0; } }
+@keyframes ja-pop { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) { .ja-backdrop, .ja-dialog { animation: none; } }
+
+/* Comets (landing page and auth): a bright lime head with a fading tail, crossing fast. */
+.comets { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.comet { position: absolute; height: 2px; border-radius: 2px; transform-origin: right center; opacity: 0;
+  background: linear-gradient(90deg, rgba(198,255,61,0) 0%, rgba(198,255,61,.25) 55%, rgba(198,255,61,.95) 96%, #fff 100%);
+  filter: drop-shadow(0 0 6px rgba(198,255,61,.7)); animation-name: comet-fly; animation-timing-function: cubic-bezier(.3,.1,.6,1); animation-fill-mode: both; }
+@keyframes comet-fly {
+  0% { opacity: 0; transform: rotate(var(--a)) translateX(0); }
+  12% { opacity: .9; }
+  80% { opacity: .9; }
+  100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--d)); }
+}
+@media (prefers-reduced-motion: reduce) { .comets { display: none; } }

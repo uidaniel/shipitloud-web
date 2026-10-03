@@ -3,6 +3,7 @@
 export interface Page { url: string; title: string; text: string }
 export interface SiteFacts {
   pages: Page[];
+  html: string;                 // the homepage HTML (capped), for page and presence checks
   meta: { description?: string; ogImage?: string; themeColor?: string; icons: string[]; siteName?: string };
   fontFamilies: string[];
 }
@@ -91,6 +92,7 @@ export async function crawlSite(start: string): Promise<SiteFacts> {
   const og = metaContent(html, 'og:image');
   return {
     pages,
+    html,
     meta: {
       description: metaContent(html, 'description') ?? metaContent(html, 'og:description'),
       ogImage: og ? new URL(og, base).toString() : undefined,

@@ -14,6 +14,7 @@ import { licenceProblems } from './footage.ts';
 import { draftBroadcast, draftWaitlistEmails, runSequence } from './emails.ts';
 import { buildDigest, dueDigests } from './digests.ts';
 import { auditLandingPage, draftNetworkKit } from './conversion.ts';
+import { analyzeSetup, freeAnalysis, startFirstWins } from './setup.ts';
 import { checkChurn, draftLifecycleEmails, runLifecycle } from './lifecycle.ts';
 import { addAds, draftCreatives, launch as launchCampaign, optimizeCampaign, pauseAll, pauseCampaign, resume as resumeCampaign, sendConversion, startCampaign, sync as syncCampaign } from './ads/index.ts';
 import { checkUpdates, learnVoice, makeContentWeek, postFromFormat, postsForUpdate, repurpose } from './content.ts';
@@ -254,6 +255,11 @@ export const handlers: Record<string, Handler> = {
     await makeLaunchPlan(job.workspace_id!);
   },
 
+  /** The 10-minute setup: understand the product, growth analysis, channel plan; then the first wins. */
+  async 'setup.analyze'(_p, job) { await analyzeSetup(job.workspace_id!); },
+  async 'setup.wins'(_p, job) { await startFirstWins(job.workspace_id!); },
+  async 'free.analysis'(p) { await freeAnalysis(String(p.id)); },
+
   /** Onboarding: crawl the site and draft the brand brain. */
   async 'brand.build'(_p, job) {
     if (!job.workspace_id) throw new Error('brand.build needs a workspace');
@@ -421,6 +427,13 @@ export async function tick() {
     if (c.status === 'active' && c.mode === 'autopilot' && (!c.last_optimized_at || now.getTime() - Date.parse(c.last_optimized_at) > 23 * 3600_000)) {
       await enqueue(c.workspace_id, 'ads.optimize', { campaign_id: c.id }, { key: `adopt:${c.id}:${now.toISOString().slice(0, 10)}` });
     }
+  }
+
+  // The growth analysis re-runs monthly (PRD section 23), checked once an hour.
+  if (now.getUTCMinutes() < 2) {
+    const stale = check(await db.from('growth_analyses').select('workspace_id, created_at').eq('status', 'ready').lt('created_at', new Date(now.getTime() - 30 * 86_400_000).toISOString()).limit(200), 'stale analyses') as { workspace_id: string; created_at: string }[];
+    const fresh = new Set((check(await db.from('growth_analyses').select('workspace_id').gte('created_at', new Date(now.getTime() - 30 * 86_400_000).toISOString()), 'fresh') as { workspace_id: string }[]).map((r) => r.workspace_id));
+    for (const s of stale) if (!fresh.has(s.workspace_id)) await enqueue(s.workspace_id, 'setup.analyze', {}, { key: `monthly:${s.workspace_id}:${now.toISOString().slice(0, 7)}` });
   }
 
   // Waitlist sequence: check every 10 minutes for workspaces that switched it on.

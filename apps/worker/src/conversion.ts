@@ -28,7 +28,7 @@ async function fetchHtml(url: string) {
 }
 
 /** Pages built in the browser show almost nothing to a plain fetch; render those. */
-async function renderHtml(url: string) {
+export async function renderHtml(url: string) {
   const browser = await chromium.launch({ executablePath: process.env.VIDEO_BROWSER || undefined });
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });

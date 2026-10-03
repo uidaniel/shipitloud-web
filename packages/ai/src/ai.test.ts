@@ -96,3 +96,11 @@ test('claim checker flags time statistics', () => {
   assert.ok(flags.some((f) => f.includes('10 hours a month')), flags.join('|'));
   assert.deepEqual(findUnsupportedClaims('Send one reminder every week.', 'x'), []);
 });
+
+test('claim checker flags invented founder backstories, not placeholders', () => {
+  const facts = 'Balans: invoice from WhatsApp';
+  assert.ok(findUnsupportedClaims('A year ago, I was sending invoices and forgetting about them.', facts).includes('A story about your past: confirm it really happened'));
+  assert.ok(findUnsupportedClaims('We almost built invoice templates. Then we realized…', facts).length > 0);
+  assert.equal(findUnsupportedClaims('[A moment when chasing payments cost you a client] That is why Balans sends reminders.', facts).includes('A story about your past: confirm it really happened'), false);
+  assert.equal(findUnsupportedClaims('Send an invoice from WhatsApp in a minute.', facts).length, 0);
+});

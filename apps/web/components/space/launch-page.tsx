@@ -13,6 +13,7 @@ import type { WaitlistStats } from '@/lib/waitlist';
 import { SiteNav } from './site-nav';
 import { AnalyticsSide } from './analytics-side';
 import { Bars3D, SOURCES } from './bars-3d';
+import { Comets } from './comets';
 import { Globe } from './globe';
 import { MacInbox } from './mac-inbox';
 import { PlatformIcon } from './platform-icons';
@@ -200,6 +201,7 @@ export function LaunchPage({ stats }: { stats: WaitlistStats }) {
     <div ref={root} className="space">
       <div className="space-bg" aria-hidden="true" />
       <SpaceScene />
+      <Comets />
 
       <SiteNav />
 

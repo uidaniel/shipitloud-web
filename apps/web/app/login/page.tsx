@@ -16,7 +16,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
   const n = NOTICE[error ?? notice ?? ''];
   const safeNext = next?.startsWith('/app') ? next : '/app';
   return (
-    <AuthShell title="Welcome back" sub="Log in to your workspace."
+    <AuthShell title="Log in to ShipItLoud"
       foot={<>New here? <Link href={`/signup${next ? `?next=${encodeURIComponent(safeNext)}` : ''}`}>Create an account</Link></>}>
       {n && <p className={n.ok ? 'pr-ok' : 'pr-error'} role="status" style={{ marginTop: 0 }}>{n.text}</p>}
       <LoginForm next={safeNext} />

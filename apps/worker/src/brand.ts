@@ -1,9 +1,9 @@
 import { BRAND_BRAIN_SYSTEM, BRAND_BRAIN_VERSION, BrandBrainSchema, BudgetExceededError, brandBrainPrompt, generate, mockBrandBrain, smartModel } from '@shipitloud/ai';
-import { crawlSite } from './crawl.ts';
+import { crawlSite, type SiteFacts } from './crawl.ts';
 import { aiLedger, check, db } from './db.ts';
 
 /** Onboarding: read the site, draft the brand brain + voice, and record what we found for the brand kit. */
-export async function buildBrand(workspaceId: string) {
+export async function buildBrand(workspaceId: string, opts: { site?: SiteFacts | null } = {}) {
   const ws = check(await db.from('workspaces').select('product_name, url').eq('id', workspaceId).single(), 'ws')!;
   const brain = check(await db.from('brand_brains').select('description, status').eq('workspace_id', workspaceId).maybeSingle(), 'brain');
   await db.from('brand_brains').upsert({ workspace_id: workspaceId, status: 'building', error: null, updated_at: new Date().toISOString() });
@@ -11,7 +11,11 @@ export async function buildBrand(workspaceId: string) {
   try {
     let pages: { url: string; title: string; text: string }[] = [];
     let siteFacts: Awaited<ReturnType<typeof crawlSite>> | null = null;
-    if (ws.url) {
+    if (opts.site) {
+      siteFacts = opts.site;
+      pages = siteFacts.pages.map((p) => ({ ...p }));
+      if (siteFacts.meta.description && pages[0]) pages[0].text = `Meta description: ${siteFacts.meta.description}\n${pages[0].text}`;
+    } else if (ws.url) {
       siteFacts = await crawlSite(ws.url);
       pages = siteFacts.pages;
       if (siteFacts.meta.description) pages[0]!.text = `Meta description: ${siteFacts.meta.description}\n${pages[0]!.text}`;

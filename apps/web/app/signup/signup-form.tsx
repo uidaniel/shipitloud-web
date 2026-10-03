@@ -7,7 +7,6 @@ import { GoogleButton, MIN_PASSWORD, PasswordInput, authError, callbackUrl } fro
 
 export function SignupForm({ next }: { next: string }) {
   const router = useRouter();
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [state, setState] = useState<'idle' | 'busy' | 'sent'>('idle');
@@ -21,7 +20,7 @@ export function SignupForm({ next }: { next: string }) {
     setState('busy');
     const { data, error } = await supabaseBrowser().auth.signUp({
       email, password,
-      options: { emailRedirectTo: callbackUrl(next), data: { name: name.trim() || null, has_password: true } },
+      options: { emailRedirectTo: callbackUrl(next), data: { has_password: true } },
     });
     if (error) { setError(authError(error.message)); setState('idle'); return; }
     // With email confirmation off, Supabase signs the user in straight away.
@@ -55,10 +54,8 @@ export function SignupForm({ next }: { next: string }) {
     <>
       <GoogleButton next={next} label="Sign up with Google" />
       <form onSubmit={submit}>
-        <label className="pr-label" htmlFor="name">Your name</label>
-        <input id="name" name="name" className="pr-input" autoComplete="name" placeholder="Ada" value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={80} />
         <label className="pr-label" htmlFor="email">Email</label>
-        <input id="email" name="email" className="pr-input" type="email" autoComplete="email" required placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input id="email" name="email" className="pr-input" type="email" autoComplete="email" required autoFocus placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
         <label className="pr-label" htmlFor="password">Password</label>
         <PasswordInput id="password" name="password" autoComplete="new-password" placeholder={`At least ${MIN_PASSWORD} characters`} value={password} onChange={(v) => { setPassword(v); setError(null); }} />
         {strength && (
