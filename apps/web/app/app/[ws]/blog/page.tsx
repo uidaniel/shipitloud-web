@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Tiles } from '@/components/app/bento';
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { requireWorkspace } from '@/lib/supabase/server';
@@ -39,12 +40,18 @@ export default async function Blog({ params, searchParams }: { params: Promise<{
       <div className="pr-content-head">
         <div>
           <h1 className="pr-h1">Blog</h1>
-          <p className="pr-lead">Articles for what your customers search, written in your voice. You read and approve each one; then it goes live on your blog.</p>
+          <p className="pr-lead">Articles for what your customers search, in your voice.</p>
         </div>
         {allowed ? (
           <form action={findKeywordIdeas}><input type="hidden" name="ws" value={id} /><Submit className="pr-btn pr-btn-primary" pending="Starting…" disabled={finding}>{finding ? 'Finding ideas…' : keywords?.length ? 'Find more ideas' : 'Find what to write about'}</Submit></form>
         ) : brain?.status !== 'ready' ? <Link className="pr-btn pr-btn-primary" href={`/app/setup/${id}`}>Set up your brand first</Link> : <Link className="pr-btn pr-btn-primary" href="/pricing">See plans</Link>}
       </div>
+
+      <Tiles items={[
+        { label: 'Ideas to write', value: keywords?.length ?? 0, tone: 'violet', sub: 'searches your customers make' },
+        { label: 'Published', value: (posts ?? []).filter((x) => x.status === 'published').length, tone: 'lime', sub: `${(posts ?? []).length} articles in total` },
+        { label: 'Views', value: (posts ?? []).reduce((n, x) => n + (x.views ?? 0), 0), tone: 'mesh', sub: 'all time' },
+      ]} />
 
       {blog && blogUrl && (
         <div className="pr-blogbar">
@@ -56,7 +63,7 @@ export default async function Blog({ params, searchParams }: { params: Promise<{
       {settings && blog && <BlogSettings ws={id} slug={blog.slug} title={blog.title} description={blog.description ?? ''} origin={origin} />}
 
       <section className="pr-section">
-        <div className="pr-section-h"><h2>What to write about</h2><p>Searches your customers make, ranked by how likely they are to buy. Comparisons and “alternative to” pages usually convert best.</p></div>
+        <div className="pr-section-h"><h2>What to write about</h2><p>Ranked by how likely the searcher is to buy.</p></div>
         <div className="pr-section-b" style={{ display: 'grid', gap: 12 }}>
           <AddKeyword ws={id} />
           {finding && !keywords?.length ? (

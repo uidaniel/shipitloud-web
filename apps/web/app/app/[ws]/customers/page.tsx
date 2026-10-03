@@ -75,12 +75,12 @@ shipitloud('reset');`;
   return (
     <div className="pr-body" style={{ display: 'grid', gap: 20 }}>
       {busy && <KitRefresher />}
-      <div>
+      <div style={{ order: -3 }}>
         <h1 className="pr-h1">Customers</h1>
-        <p className="pr-lead">Turn signups into paying customers, and notice when paying ones go quiet.</p>
+        <p className="pr-lead">Turn signups into paying customers. Notice when they go quiet.</p>
       </div>
 
-      <div className="pr-stats">
+      <div className="pr-stats" style={{ order: -2, marginBottom: 0 }}>
         <div className="pr-stat"><span>Signed up</span><b>{signed}</b><small>Last 30 days</small></div>
         <div className="pr-stat"><span>Activated</span><b>{activated}</b><small>{signed ? `${pct(activated, signed)}% of signups` : '–'}</small></div>
         <div className="pr-stat"><span>Paying</span><b>{payingAll ?? 0}</b><small>{signed ? `${pct(paying, signed)}% of last 30 days’ signups` : '–'}</small></div>
@@ -156,7 +156,8 @@ shipitloud('reset');`;
         <LifecycleForm ws={id} v={s} needsAddress={(email?.business_address ?? '').trim().length < 10} />
       </div>
 
-      <section className="pr-section" id="connect">
+      {/* Until the app sends its first user, connecting it is the one thing to do here, so it comes first. */}
+      <section className="pr-section" id="connect" style={{ order: connected ? 0 : -1 }}>
         <div className="pr-section-h" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <div><h2>Connect your app</h2><p>Two small steps. The first works on its own; the second lets us email your users.</p></div>
           <span className={`pr-chip ${connected ? 'pr-chip-ok' : ''}`}>{connected ? `Receiving · last user ${ago(all[0]!.signed_up_at)}` : 'Nothing received yet'}</span>

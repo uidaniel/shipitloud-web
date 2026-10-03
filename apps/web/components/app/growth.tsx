@@ -52,15 +52,15 @@ export function AnalysisView({ a, brief, noHero }: { a: Analysis; brief?: boolea
 
       <Rest>
       <div className="pr-grid-2" style={{ alignItems: 'start' }}>
-        <section>
+        {(a.ideal_customer || a.hangouts.length > 0) && <section>
           <h3>Who signs up first</h3>
           <p className="pr-growth-p">{a.ideal_customer}</p>
           {a.hangouts.length > 0 && <div className="pr-tags">{a.hangouts.map((h) => <span key={h} className="pr-chip">{h}</span>)}</div>}
-        </section>
-        <section>
+        </section>}
+        {a.page_fixes.length > 0 && <section>
           <h3>Fix these on your page first</h3>
           <ul className="pr-fixes">{a.page_fixes.map((f) => <li key={f.area}><span className="pr-chip">{AREA[f.area] ?? f.area}</span><div><b>{f.fix}</b><small>{f.why}</small></div></li>)}</ul>
-        </section>
+        </section>}
       </div>
 
       {a.review_themes && (a.review_themes.loves.length > 0 || a.review_themes.complaints.length > 0) && (

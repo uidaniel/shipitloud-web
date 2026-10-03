@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Tiles } from '@/components/app/bento';
 import { requireWorkspace } from '@/lib/supabase/server';
 import { PlatformIcon, type Platform } from '@/components/space/platform-icons';
 import { ReadyToPost } from './ready';
@@ -59,6 +60,11 @@ export default async function Activity({ params }: { params: Promise<{ ws: strin
   return (
     <div className="pr-body">
       <div className="pr-page-h"><h1 className="pr-h1">Activity</h1><p className="pr-lead">Everything that went out, and what’s ready for you to post.</p></div>
+      <Tiles items={[
+        { label: 'Ready for you to post', value: readyItems.length, tone: 'violet', sub: 'copy, open, post' },
+        { label: 'Went out', value: (actions.data ?? []).filter((a) => a.status === 'executed' || a.status === 'simulated').length, tone: 'lime', sub: 'recent posts, replies and emails' },
+        { label: 'You approved', value: (approvals.data ?? []).filter((a) => a.status === 'approved' || a.status === 'edited').length, tone: 'mesh', sub: 'recent decisions' },
+      ]} />
       {!!readyItems.length && (
         <section style={{ marginBottom: 28 }}>
           <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600 }}>Ready for you to post</h2>

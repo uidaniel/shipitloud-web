@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { Tiles } from '@/components/app/bento';
+import { Icon } from '@/components/app/icons';
 import Link from 'next/link';
 import { requireWorkspace } from '@/lib/supabase/server';
 import { PlatformIcon, type Platform } from '@/components/space/platform-icons';
@@ -145,39 +147,50 @@ async function DirectoriesTab({ id }: { id: string }) {
   const st = new Map((subs ?? []).map((s) => [s.directory_id, s.status as string]));
   const live = [...st.values()].filter((s) => s === 'live').length;
   const submitted = [...st.values()].filter((s) => s === 'submitted' || s === 'live').length;
-  const OPTIONS = [['todo', 'To do'], ['submitted', 'Submitted'], ['live', 'Live'], ['rejected', 'Rejected']] as const;
+  const CAT: Record<string, string> = { ai: 'AI', dev: 'Developer tools', launch: 'Launch sites', saas: 'SaaS', startup: 'Startups' };
+  const groups = new Map<string, NonNullable<typeof dirs>>();
+  for (const d of dirs ?? []) { if (!groups.has(d.category)) groups.set(d.category, []); groups.get(d.category)!.push(d); }
+  const total = dirs?.length ?? 0;
+  // One next step per directory instead of four status buttons: submit, then say it's live (or rejected).
+  const NEXT: Record<string, [string, string][]> = { todo: [['submitted', 'I submitted it']], submitted: [['live', 'It’s live'], ['rejected', 'Rejected']], live: [], rejected: [['todo', 'Try again']] };
+  const LABEL: Record<string, [string, string]> = { todo: ['To do', ''], submitted: ['Submitted', 'pr-chip-violet'], live: ['Live', 'pr-chip-ok'], rejected: ['Rejected', 'pr-chip-err'] };
   return (
     <div>
-      <div style={{ marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: '-0.02em' }}>Directories</h2>
-        <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 13 }}>Places to list your product for early traffic and backlinks. {submitted} submitted · {live} live.</p>
-      </div>
-      <div className="pr-table-wrap">
-        <table className="pr-table">
-          <thead><tr><th>Directory</th><th className="hide-sm">Tip</th><th>Status</th><th /></tr></thead>
-          <tbody>
-            {(dirs ?? []).map((d) => {
+      <Tiles items={[
+        { label: 'To do', value: total - submitted - [...st.values()].filter((x) => x === 'rejected').length, unit: `/${total}`, tone: 'violet', sub: 'places to list you' },
+        { label: 'Submitted', value: submitted, tone: 'mesh', sub: 'waiting for review' },
+        { label: 'Live', value: live, tone: 'lime', sub: 'early traffic and backlinks' },
+      ]} />
+      {[...groups.entries()].map(([cat, list]) => (
+        <section key={cat} style={{ marginBottom: 22 }}>
+          <h3 className="pr-dir-k">{CAT[cat] ?? cat}</h3>
+          <ul className="pr-dirs">
+            {list.map((d) => {
               const cur = st.get(d.id) ?? 'todo';
+              const [label, cls] = LABEL[cur] ?? LABEL.todo!;
               return (
-                <tr key={d.id}>
-                  <td><span className="t-main">{d.name}</span><span className="t-sub">{d.category}</span></td>
-                  <td className="hide-sm" style={{ color: 'var(--muted)', fontSize: 13, maxWidth: 380 }}>{d.notes}</td>
-                  <td>
+                <li key={d.id} className={`pr-dir is-${cur}`}>
+                  <div className="pr-dir-h">
+                    <span className="pr-dir-av">{d.name.slice(0, 1)}</span>
+                    <b>{d.name}</b>
+                    <span className={`pr-chip ${cls}`}>{cur === 'live' ? '✓ ' : ''}{label}</span>
+                  </div>
+                  <p>{d.notes}</p>
+                  <div className="pr-dir-f">
+                    {cur !== 'live' && <a className="pr-btn pr-btn-sm" href={d.submit_url ?? d.url} target="_blank" rel="noopener noreferrer">{cur === 'todo' ? 'Open and submit' : 'Open'} {Icon.external}</a>}
+                    {cur === 'live' && <a className="pr-link" href={d.url} target="_blank" rel="noopener noreferrer">See your listing</a>}
                     <form action={setDirectory} style={{ display: 'flex', gap: 4 }}>
                       <input type="hidden" name="ws" value={id} />
                       <input type="hidden" name="dir" value={d.id} />
-                      {OPTIONS.map(([v, l]) => (
-                        <button key={v} name="status" value={v} className={`pr-chip ${cur === v ? (v === 'live' ? 'pr-chip-ok' : v === 'submitted' ? 'pr-chip-violet' : v === 'rejected' ? 'pr-chip-err' : '') : ''}`} style={{ border: 0, cursor: 'pointer', opacity: cur === v ? 1 : 0.45 }} aria-pressed={cur === v}>{l}</button>
-                      ))}
+                      {(NEXT[cur] ?? []).map(([v, l]) => <Submit key={v} name="status" value={v} className={v === 'live' || v === 'submitted' ? 'pr-btn pr-btn-sm pr-btn-primary' : 'pr-btn pr-btn-sm pr-btn-ghost'} pending="…">{l}</Submit>)}
                     </form>
-                  </td>
-                  <td style={{ textAlign: 'right' }}><a className="pr-btn pr-btn-sm" href={d.submit_url ?? d.url} target="_blank" rel="noopener noreferrer">Submit</a></td>
-                </tr>
+                  </div>
+                </li>
               );
             })}
-          </tbody>
-        </table>
-      </div>
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }
