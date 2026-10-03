@@ -78,6 +78,45 @@ export async function runBillingOps(now = Date.now()) {
     }
   }
 
+  // Trial, daily: yesterday's warm leads with the drafted replies waiting (PRD section 25: activation).
+  const day = new Date(now).toISOString().slice(0, 10);
+  for (const s of (subs ?? []).filter((x) => x.status === 'trialing')) {
+    if (new Date(now).getUTCHours() < 8) break;
+    const { count } = await db.from('mentions').select('id', { count: 'exact', head: true }).eq('workspace_id', s.workspace_id).gte('score', 60).gte('created_at', iso(now - DAY));
+    if (count) await message(s.workspace_id, 'trial_daily', day, 'results', `${count} ${count === 1 ? 'person' : 'people'} asked for what you built yesterday`, 'Replies are drafted in your voice. Approve the ones you like.', `/app/${s.workspace_id}/listening`);
+  }
+
+  // Usage at 80% of a monthly cap: one notice per metric per month, with the upgrade option.
+  const period = new Date(now).toISOString().slice(0, 7) + '-01';
+  const [{ data: use }, { data: caps }, { data: plans }] = await Promise.all([
+    db.from('usage').select('workspace_id, ai_drafts, images, videos').eq('period', period).limit(2000),
+    db.from('plan_limits').select('plan, metric, monthly_cap'),
+    db.from('workspaces').select('id, plan').limit(5000),
+  ]);
+  const planOf = new Map((plans ?? []).map((w) => [w.id, w.plan as string]));
+  for (const u of use ?? []) {
+    const plan = planOf.get(u.workspace_id) ?? 'free';
+    for (const metric of ['ai_drafts', 'images', 'videos'] as const) {
+      const cap = caps?.find((c) => c.plan === plan && c.metric === metric)?.monthly_cap;
+      if (!cap || (u[metric] ?? 0) < cap * 0.8) continue;
+      const label = metric === 'ai_drafts' ? 'AI drafts' : metric;
+      await message(u.workspace_id, 'usage_80', `${period}:${metric}`, 'billing', `You’ve used ${u[metric]} of ${cap} ${label} this month`, plan === 'scale' ? 'Your allowance resets on the 1st.' : 'Your allowance resets on the 1st, or move up a plan for more.', plan === 'free' ? `/app/${u.workspace_id}/upgrade` : `/app/${u.workspace_id}/billing`);
+    }
+  }
+
+  // Day 30 on a paid plan: a monthly report against the plan's first month.
+  for (const s of (subs ?? []).filter((x) => x.status === 'active' && x.plan !== 'launch_pass')) {
+    const { data: first } = await db.from('subscriptions').select('first_paid_at').eq('workspace_id', s.workspace_id).maybeSingle();
+    if (!first?.first_paid_at) continue;
+    const months = Math.floor((now - Date.parse(first.first_paid_at)) / (30 * DAY));
+    if (months < 1) continue;
+    const [{ count: signups }, { count: replies }] = await Promise.all([
+      db.from('track_events').select('id', { count: 'exact', head: true }).eq('workspace_id', s.workspace_id).eq('type', 'signup').gte('created_at', iso(now - 30 * DAY)),
+      db.from('mentions').select('id', { count: 'exact', head: true }).eq('workspace_id', s.workspace_id).eq('status', 'replied').gte('created_at', iso(now - 30 * DAY)),
+    ]);
+    await message(s.workspace_id, 'monthly_report', String(months), 'digests', `Your month ${months}: ${signups ?? 0} signups, ${replies ?? 0} replies`, 'See which channels brought them, and what we’ll do more of next month.', `/app/${s.workspace_id}/analytics`);
+  }
+
   // Setup abandoned: a nudge after 1 hour and after 24 hours, with a resume link.
   const { data: fresh } = await db.from('workspaces').select('id, product_name, created_at').gte('created_at', iso(now - 2 * DAY)).lte('created_at', iso(now - 3600_000)).limit(200);
   for (const w of fresh ?? []) {
