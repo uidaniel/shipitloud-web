@@ -87,7 +87,8 @@ export async function processEvent(admin: Admin, id: string, e: BillingEvent): P
     }
     const { workspacePlan, ...row } = patch;
     const clean = Object.fromEntries(Object.entries(row).filter(([, v]) => v !== undefined));
-    await admin.from('subscriptions').upsert({ ...clean, provider: (prev as Sub | null)?.provider ?? (id.startsWith('sim_') ? 'simulator' : 'dodo'), cancel_at_period_end: false, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
+    const keepCancel = !!(prev as Sub | null)?.cancel_at_period_end && patch.status === 'active';
+    await admin.from('subscriptions').upsert({ ...clean, provider: (prev as Sub | null)?.provider ?? (id.startsWith('sim_') ? 'simulator' : 'dodo'), cancel_at_period_end: keepCancel, updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
     const { data: before } = await admin.from('workspaces').select('plan, owner_id').eq('id', patch.workspace_id).single();
     await admin.from('workspaces').update({ plan: workspacePlan }).eq('id', patch.workspace_id);
 
@@ -142,14 +143,32 @@ async function rewardReferral(admin: Admin, referred: string) {
 }
 
 // ---------------------------------------------------------------- subscription changes
-/** Cancel now: stops charging immediately and drops the workspace to Free (data kept). */
-export async function cancelNow(ws: string) {
+/**
+ * Cancel: no further charges. A paid month already bought stays until it ends (Refund Policy), then Free;
+ * trials, unpaid and paused plans (and deletions) end at once. Data is always kept on Free.
+ */
+export async function cancelNow(ws: string, o: { immediate?: boolean } = {}) {
   const admin = supabaseAdmin();
   const { data: sub } = await admin.from('subscriptions').select('*').eq('workspace_id', ws).maybeSingle();
   if (!sub || ['cancelled', 'expired'].includes(sub.status)) return;
+  const paidThrough = sub.status === 'active' && sub.plan !== 'launch_pass' && sub.current_period_end && Date.parse(sub.current_period_end) > Date.now();
+  if (paidThrough && !o.immediate) {
+    if (sub.provider === 'dodo' && sub.provider_id) await dodo(`/subscriptions/${sub.provider_id}`, 'PATCH', { cancel_at_next_billing_date: true, cancel_reason: 'cancelled_by_customer' });
+    await admin.from('subscriptions').update({ cancel_at_period_end: true, updated_at: new Date().toISOString() }).eq('workspace_id', ws);
+    return;
+  }
   if (sub.provider === 'dodo' && sub.provider_id && sub.plan !== 'launch_pass') await dodo(`/subscriptions/${sub.provider_id}`, 'PATCH', { status: 'cancelled', cancel_reason: 'cancelled_by_customer' });
   // Our own state changes at once; Dodo's subscription.cancelled webhook then arrives as a duplicate no-op.
   await simulate(admin, ws, sub.plan, 'subscription.cancelled');
+}
+
+/** Undo a scheduled cancellation before the paid period ends. */
+export async function keepPlan(ws: string) {
+  const admin = supabaseAdmin();
+  const { data: sub } = await admin.from('subscriptions').select('*').eq('workspace_id', ws).maybeSingle();
+  if (!sub?.cancel_at_period_end) return;
+  if (sub.provider === 'dodo' && sub.provider_id) await dodo(`/subscriptions/${sub.provider_id}`, 'PATCH', { cancel_at_next_billing_date: false });
+  await admin.from('subscriptions').update({ cancel_at_period_end: false, updated_at: new Date().toISOString() }).eq('workspace_id', ws);
 }
 
 /** Pause billing for 1 or 2 months; the worker resumes it on the date. */

@@ -1214,3 +1214,11 @@ a.tile:hover { transform: translateY(-3px); }
 .pr-side .pr-meter-up, .pr-side .pr-meter-up:hover { color: #0d0d12; }
 .pr-top-banner { margin: 16px 28px 0; }
 @media (max-width: 860px) { .pr-top-banner { margin: 12px 16px 0; } }
+
+/* settings: notification types, quiet hours, data */
+.pr-notif-types { display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line); }
+.pr-notif-types > b { font-size: 14px; margin-bottom: 4px; }
+.pr-quiet { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+.pr-quiet label { display: inline-flex; align-items: center; gap: 8px; }
+.pr-quiet .pr-select { width: auto; }
+.pr-delete { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }

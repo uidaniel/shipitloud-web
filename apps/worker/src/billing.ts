@@ -32,7 +32,7 @@ async function toFree(ws: string, status: 'cancelled' | 'expired') {
 }
 
 export async function runBillingOps(now = Date.now()) {
-  const { data: subs } = await db.from('subscriptions').select('workspace_id, plan, status, provider, provider_id, trial_ends_at, current_period_end, paused_until, past_due_since, reminded_at, updated_at').in('status', ['trialing', 'active', 'past_due', 'paused', 'cancelled']);
+  const { data: subs } = await db.from('subscriptions').select('workspace_id, plan, status, provider, provider_id, trial_ends_at, current_period_end, cancel_at_period_end, paused_until, past_due_since, reminded_at, updated_at').in('status', ['trialing', 'active', 'past_due', 'paused', 'cancelled']);
   for (const s of subs ?? []) {
     try {
       // Day 5 of 7: honest reminder with the date and a cancel link.
@@ -53,6 +53,11 @@ export async function runBillingOps(now = Date.now()) {
         await db.from('subscriptions').update({ status: 'active', paused_until: null, updated_at: iso(now) }).eq('workspace_id', s.workspace_id);
         await db.from('workspaces').update({ plan: s.plan }).eq('id', s.workspace_id);
         await message(s.workspace_id, 'pause_ended', s.paused_until, 'billing', 'Welcome back: your plan is running again', 'Listening, drafts and your weekly plan have picked up where they left off.', `/app/${s.workspace_id}`);
+      }
+      // A cancellation scheduled for the end of a paid month takes effect.
+      if (s.status === 'active' && s.cancel_at_period_end && s.current_period_end && Date.parse(s.current_period_end) <= now) {
+        await toFree(s.workspace_id, 'cancelled');
+        await message(s.workspace_id, 'plan_ended', s.current_period_end, 'billing', 'You’re on the Free plan now', 'Your plan, assets and history are saved. 3 warm leads a week keep coming.', `/app/${s.workspace_id}/billing`);
       }
       // Launch Pass: 30 days, then Free.
       if (s.plan === 'launch_pass' && s.status === 'active' && s.current_period_end && Date.parse(s.current_period_end) <= now) {

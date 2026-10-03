@@ -196,8 +196,14 @@ export async function saveNotifications(_: unknown, form: FormData): Promise<For
   const { sb, user } = await requireUser();
   const hook = str(form.get('slack_webhook'), 500);
   if (hook && !/^https:\/\/hooks\.slack\.com\//.test(hook)) return fail(form, 'Slack webhooks start with https://hooks.slack.com/');
-  const prefs = { email: form.get('email') === 'on', slack: form.get('slack') === 'on' && !!hook, slack_webhook: hook || undefined, push: false, whatsapp: false };
-  const { error } = await sb.from('profiles').update({ notification_prefs: prefs }).eq('id', user.id);
+  const types = Object.fromEntries(['approvals', 'results', 'digests', 'billing', 'product'].map((t) => [t, form.get(`type_${t}`) === 'on']));
+  const hour = (v: FormDataEntryValue | null) => Math.max(0, Math.min(23, Math.floor(Number(v) || 0)));
+  const quiet = form.get('quiet') === 'on' ? { start: hour(form.get('quiet_start')), end: hour(form.get('quiet_end')) } : null;
+  const tz = str(form.get('timezone'), 60);
+  let timezone = 'UTC';
+  try { if (tz) { new Intl.DateTimeFormat('en', { timeZone: tz }); timezone = tz; } } catch { /* unknown zone: keep UTC */ }
+  const prefs = { email: form.get('email') === 'on', slack: form.get('slack') === 'on' && !!hook, slack_webhook: hook || undefined, push: false, whatsapp: false, types, quiet };
+  const { error } = await sb.from('profiles').update({ notification_prefs: prefs, timezone }).eq('id', user.id);
   revalidatePath('/app', 'layout');
   return error ? { error: 'Couldn’t save. Try again.' } : { ok: true };
 }
@@ -1043,4 +1049,40 @@ export async function saveRecording(ws: string, path: string, seconds: number) {
   const url = supabaseAdmin().storage.from('assets').getPublicUrl(path).data.publicUrl;
   await supabaseAdmin().from('brand_kits').upsert({ workspace_id: ws, recording: { url, path, seconds: Math.round(Math.max(1, Math.min(600, seconds)) * 10) / 10 }, updated_at: new Date().toISOString() });
   revalidatePath(`/app/setup/${ws}`);
+}
+
+// ---------------------------------------------------------------- profile, data export, deletion (PRD section 25)
+export async function saveProfile(_: unknown, form: FormData): Promise<FormState> {
+  const { sb, user } = await requireUser();
+  const name = str(form.get('name'), 80);
+  const { error } = await sb.from('profiles').update({ name: name || null }).eq('id', user.id);
+  revalidatePath('/app', 'layout');
+  return error ? fail(form, 'Couldn’t save. Try again.') : { ok: true };
+}
+
+/** Delete with a typed name: tokens are revoked at once, everything else goes after a 7-day grace period. */
+export async function requestDeletion(_: unknown, form: FormData): Promise<FormState> {
+  const wsId = str(form.get('ws'));
+  const { ws, user } = await requireWorkspace(wsId);
+  if (str(form.get('confirm_name'), 200) !== ws.product_name) return fail(form, `Type ${ws.product_name} exactly to confirm.`);
+  const admin = supabaseAdmin();
+  await admin.from('connections').delete().eq('workspace_id', wsId);
+  await admin.from('extension_tokens').update({ revoked_at: new Date().toISOString() }).eq('workspace_id', wsId).is('revoked_at', null);
+  await admin.from('api_keys').update({ revoked_at: new Date().toISOString() }).eq('workspace_id', wsId).is('revoked_at', null);
+  await admin.from('deletion_requests').upsert({ workspace_id: wsId, requested_by: user.id, requested_at: new Date().toISOString(), scheduled_for: new Date(Date.now() + 7 * 86_400_000).toISOString(), cancelled_at: null, completed_at: null });
+  await admin.from('admin_audit_log').insert({ admin_id: user.id, action: 'workspace.deletion_requested', target: wsId, detail: { tokens_revoked: true } });
+  // Paid plans stop charging now rather than in 7 days.
+  const { cancelNow } = await import('@/lib/billing');
+  await cancelNow(wsId, { immediate: true }).catch(() => undefined);
+  revalidatePath(`/app/${wsId}`, 'layout');
+  return { ok: true };
+}
+
+export async function cancelDeletion(form: FormData) {
+  const wsId = str(form.get('ws'));
+  const { user } = await requireWorkspace(wsId);
+  const admin = supabaseAdmin();
+  await admin.from('deletion_requests').update({ cancelled_at: new Date().toISOString() }).eq('workspace_id', wsId).is('completed_at', null);
+  await admin.from('admin_audit_log').insert({ admin_id: user.id, action: 'workspace.deletion_cancelled', target: wsId });
+  revalidatePath(`/app/${wsId}`, 'layout');
 }

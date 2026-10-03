@@ -7,7 +7,7 @@ import { Tiles } from '@/components/app/bento';
 import { CopyButton } from '../analytics/parts';
 import { billingMode, type Sub } from '@/lib/billing';
 import { plans } from '@/lib/site';
-import { openPortal, pauseSubscription, referralCode, resumeSubscription, testEvent } from '../../billing-actions';
+import { keepSubscription, openPortal, pauseSubscription, referralCode, resumeSubscription, testEvent } from '../../billing-actions';
 
 export const metadata: Metadata = { title: 'Billing' };
 
@@ -16,7 +16,7 @@ const date = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDa
 const daysLeft = (iso: string | null) => (iso ? Math.max(0, Math.ceil((Date.parse(iso) - Date.now()) / 86_400_000)) : 0);
 const NOTICE: Record<string, string> = {
   welcome: 'You’re in. Everything is unlocked.',
-  cancelled: 'Cancelled. Nothing more will be charged. You’re on the Free plan with your plan and assets saved.',
+  cancelled: 'Cancelled. Nothing more will be charged. Your plan, assets and history are saved on Free.',
   paused: 'Paused. Nothing is charged until it resumes.',
   pause_1m: 'Paused for a month. It picks up again on its own.',
   strategy_reset: 'Strategy reset started: a fresh analysis and channel plan are on their way.',
@@ -46,6 +46,7 @@ export default async function Billing({ params, searchParams }: { params: Promis
     : sub?.status === 'paused' ? { label: 'Resumes', value: date(sub.paused_until), sub: 'nothing charged until then' }
     : sub?.status === 'past_due' ? { label: 'Payment', value: 'Failed', sub: 'we retry for 7 days' }
     : sub?.plan === 'launch_pass' && live ? { label: 'Launch Pass until', value: date(sub.current_period_end), sub: 'then the Free plan' }
+    : live && sub!.cancel_at_period_end ? { label: 'Ends', value: date(sub!.current_period_end), sub: 'then the Free plan, nothing charged' }
     : live ? { label: 'Renews', value: date(sub!.current_period_end), sub: `$${price}/month` }
     : { label: 'Next charge', value: 'None', sub: 'you’re on Free' };
 
@@ -58,6 +59,10 @@ export default async function Billing({ params, searchParams }: { params: Promis
           <form action={openPortal}><input type="hidden" name="ws" value={id} /><Submit className="pr-btn pr-btn-sm" pending="Opening…">Update card</Submit></form></div>
       )}
 
+      {sub?.cancel_at_period_end && live && (
+        <div className="pr-banner pr-banner-warn" style={{ marginBottom: 18 }}><span><b>Your plan ends on {date(sub.current_period_end)}.</b> Nothing more is charged; after that you’re on Free with everything saved.</span>
+          <form action={keepSubscription}><input type="hidden" name="ws" value={id} /><Submit className="pr-btn pr-btn-sm" pending="…">Keep my plan</Submit></form></div>
+      )}
       <Tiles items={[
         { label: 'Your plan', value: PLAN[ws.plan] ?? ws.plan, text: true, tone: 'violet', sub: status === 'trialing' ? 'free trial' : status === 'free' ? 'no card on file' : status.replace('_', ' ') },
         { label: next.label, value: next.value, text: true, tone: 'mesh', sub: next.sub },
@@ -83,7 +88,7 @@ export default async function Billing({ params, searchParams }: { params: Promis
                   </form>
                 ) : null}
                 {ws.plan === 'grow' && <Link className="pr-btn" href={`/app/${id}/upgrade?reason=scale`}>See Scale</Link>}
-                {live && sub!.plan !== 'launch_pass' && <Link className="pr-btn pr-btn-ghost bl-cancel" href={`/app/${id}/billing/cancel`}>Cancel plan</Link>}
+                {live && sub!.plan !== 'launch_pass' && !sub!.cancel_at_period_end && <Link className="pr-btn pr-btn-ghost bl-cancel" href={`/app/${id}/billing/cancel`}>Cancel plan</Link>}
               </>
             )}
           </div>

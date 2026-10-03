@@ -88,3 +88,9 @@ test('self-referrals are blocked, including plus and dot aliases', () => {
   assert.equal(referralCheck({ referrerOwner: 'u1', referredOwner: 'u2', referrerEmail: 'ada.l@gmail.com', referredEmail: 'adal+2@gmail.com' }), 'Same email');
   assert.equal(referralCheck({ referrerOwner: 'u1', referredOwner: 'u2', referrerEmail: 'ada@gmail.com', referredEmail: 'bob@gmail.com' }), null);
 });
+
+test('events without a billing date keep the stored period end', () => {
+  const p = applyEvent(ev('subscription.unpaused'), { status: 'paused', trial_ends_at: null, first_paid_at: 'x', past_due_since: null }, products, NOW)!;
+  assert.equal(p.current_period_end, undefined);
+  assert.equal(applyEvent(ev('subscription.renewed', { next_billing_date: '2026-11-03T00:00:00.000Z' }), null, products, NOW)!.current_period_end, '2026-11-03T00:00:00.000Z');
+});

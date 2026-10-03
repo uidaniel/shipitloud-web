@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { CANCEL_REASONS, offerFor, type CancelReason, type PaidPlan } from '@shipitloud/engine';
 import { requireWorkspace, supabaseAdmin } from '@/lib/supabase/server';
-import { billingMode, cancelNow, checkoutUrl, pause, portalUrl, resume, simulate } from '@/lib/billing';
+import { billingMode, cancelNow, checkoutUrl, keepPlan, pause, portalUrl, resume, simulate } from '@/lib/billing';
 
 const str = (v: FormDataEntryValue | null, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const PLANS: PaidPlan[] = ['grow', 'scale', 'launch_pass'];
@@ -57,6 +57,14 @@ export async function testEvent(form: FormData) {
   if (!sub || !['payment.succeeded', 'payment.failed', 'subscription.renewed'].includes(type)) return;
   await simulate(admin, ws, sub.plan as PaidPlan, type, { next_billing_date: new Date(Date.now() + 30 * DAY).toISOString() });
   revalidatePath(`/app/${ws}`, 'layout');
+}
+
+export async function keepSubscription(form: FormData) {
+  const ws = str(form.get('ws'));
+  await requireWorkspace(ws);
+  await keepPlan(ws);
+  revalidatePath(`/app/${ws}`, 'layout');
+  redirect(`/app/${ws}/billing`);
 }
 
 export async function openPortal(form: FormData) {

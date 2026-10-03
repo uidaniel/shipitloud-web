@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { Submit, kept, keptOn } from '@/components/app/ui';
-import { changePassword, createExtensionToken, revokeExtensionToken, saveAutomation, saveNotifications, saveProduct, setKillSwitch, signOutEverywhere } from '../../actions';
+import { cancelDeletion, changePassword, createExtensionToken, requestDeletion, revokeExtensionToken, saveAutomation, saveNotifications, saveProduct, saveProfile, setKillSwitch, signOutEverywhere } from '../../actions';
 import { PasswordInput } from '@/components/app/auth';
 
 function Saved({ state }: { state: { ok?: boolean; error?: string } }) {
@@ -101,9 +101,22 @@ export function ProductForm({ ws, name, url, launchDate }: { ws: string; name: s
   );
 }
 
-export function NotificationsForm({ email, slack, webhook, address }: { email: boolean; slack: boolean; webhook: string; address: string }) {
+const TYPES = [
+  { id: 'approvals', label: 'Things to approve', hint: 'New drafts, items about to expire' },
+  { id: 'results', label: 'Results', hint: 'Kits, posts and warm leads ready' },
+  { id: 'digests', label: 'Weekly digest', hint: 'Monday summary' },
+  { id: 'billing', label: 'Billing', hint: 'Trial reminders, receipts' },
+  { id: 'product', label: 'Product updates', hint: 'New features, setup tips' },
+] as const;
+const HOURS = Array.from({ length: 24 }, (_, h) => h);
+const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
+
+export function NotificationsForm({ email, slack, webhook, address, types, quiet, timezone }: { email: boolean; slack: boolean; webhook: string; address: string; types: Record<string, boolean>; quiet: { start: number; end: number } | null; timezone: string }) {
   const [state, action] = useActionState(saveNotifications, {});
   const [slackOn, setSlackOn] = useState(slack);
+  const [quietOn, setQuietOn] = useState(!!quiet);
+  const [tz, setTz] = useState(timezone);
+  useEffect(() => { if (timezone === 'UTC') { try { setTz(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'); } catch { /* keep UTC */ } } }, [timezone]);
   return (
     <form action={action} className="pr-section">
       <div className="pr-section-h">
@@ -126,6 +139,28 @@ export function NotificationsForm({ email, slack, webhook, address }: { email: b
           </div>
         )}
         {!slackOn && <input type="hidden" name="slack_webhook" value={webhook} />}
+        <div className="pr-notif-types">
+          <b>What to send</b>
+          {TYPES.map((t) => (
+            <label key={t.id} className="pr-row">
+              <div className="pr-row-t"><b>{t.label}</b><span>{t.hint}</span></div>
+              <span className="pr-switch"><input type="checkbox" name={`type_${t.id}`} defaultChecked={types[t.id] !== false} aria-label={t.label} /><i /></span>
+            </label>
+          ))}
+          <p className="pr-hint" style={{ margin: 0 }}>Ad spend alerts, failed payments and account warnings always come through.</p>
+        </div>
+        <div className="pr-row">
+          <div className="pr-row-t"><b>Quiet hours</b><span>Nothing is sent in this window; it waits in the app.</span></div>
+          <span className="pr-switch"><input type="checkbox" name="quiet" checked={quietOn} onChange={(e) => setQuietOn(e.target.checked)} aria-label="Quiet hours" /><i /></span>
+        </div>
+        {quietOn && (
+          <div className="pr-fade-in pr-quiet">
+            <label>From <select className="pr-select" name="quiet_start" defaultValue={quiet?.start ?? 22}>{HOURS.map((h) => <option key={h} value={h}>{hh(h)}</option>)}</select></label>
+            <label>to <select className="pr-select" name="quiet_end" defaultValue={quiet?.end ?? 7}>{HOURS.map((h) => <option key={h} value={h}>{hh(h)}</option>)}</select></label>
+            <span className="pr-hint">{tz}</span>
+          </div>
+        )}
+        <input type="hidden" name="timezone" value={tz} />
       </div>
       <div className="pr-section-f"><Saved state={state} /><Submit pending="Saving…">Save</Submit></div>
     </form>
@@ -209,6 +244,52 @@ export function ExtensionForm({ ws, tokens }: { ws: string; tokens: { id: string
         <input type="hidden" name="ws" value={ws} />
         <Submit pending="Creating…">{tokens.length ? 'Connect another browser' : 'Connect the extension'}</Submit>
       </form>
+    </div>
+  );
+}
+
+export function ProfileForm({ name }: { name: string }) {
+  const [state, action] = useActionState(saveProfile, {});
+  return (
+    <form action={action} className="pr-section">
+      <div className="pr-section-h"><h2>Your name</h2><p>Used in emails we draft for you and on your blog posts.</p></div>
+      <div className="pr-section-b"><input className="pr-input" name="name" defaultValue={kept(state, 'name', name)} placeholder="Ada Lovelace" maxLength={80} aria-label="Your name" /></div>
+      <div className="pr-section-f"><Saved state={state} /><Submit pending="Saving…">Save</Submit></div>
+    </form>
+  );
+}
+
+export function DataForm({ ws, product, scheduled }: { ws: string; product: string; scheduled: string | null }) {
+  const [state, action] = useActionState(requestDeletion, {});
+  const [typed, setTyped] = useState('');
+  return (
+    <div className="pr-section">
+      <div className="pr-section-h"><h2>Your data</h2><p>Download everything any time. Deleting gives you 7 days to change your mind.</p></div>
+      <div className="pr-section-b" style={{ display: 'grid', gap: 18 }}>
+        <div className="pr-row">
+          <div className="pr-row-t"><b>Export</b><span>Your workspace as JSON, plus waitlist contacts as CSV.</span></div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <a className="pr-btn pr-btn-sm" href={`/app/${ws}/export`}>Download JSON</a>
+            <a className="pr-btn pr-btn-sm pr-btn-ghost" href={`/app/${ws}/waitlist/export`}>Waitlist CSV</a>
+          </div>
+        </div>
+        {scheduled ? (
+          <div className="pr-banner pr-banner-err" style={{ margin: 0 }}>
+            <span><b>{product} will be deleted on {new Date(scheduled).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.</b> Connected accounts were already disconnected.</span>
+            <form action={cancelDeletion}><input type="hidden" name="ws" value={ws} /><Submit className="pr-btn pr-btn-sm" pending="…">Keep my workspace</Submit></form>
+          </div>
+        ) : (
+          <form action={action} className="pr-delete">
+            <input type="hidden" name="ws" value={ws} />
+            <div className="pr-row-t"><b>Delete this workspace</b><span>Type <strong>{product}</strong> to confirm. Connected accounts are disconnected right away; everything else is deleted after 7 days.</span></div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <input className="pr-input" name="confirm_name" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={product} style={{ flex: 1, minWidth: 180 }} aria-label="Type the workspace name" />
+              <Submit className="pr-btn pr-btn-danger" pending="Scheduling…" disabled={typed.trim() !== product}>Delete</Submit>
+            </div>
+            {state.error && <p className="pr-error" role="alert" style={{ margin: 0 }}>{state.error}</p>}
+          </form>
+        )}
+      </div>
     </div>
   );
 }

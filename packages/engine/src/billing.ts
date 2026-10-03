@@ -108,12 +108,13 @@ export function applyEvent(e: BillingEvent, prev: { status: SubStatus; trial_end
       const start = e.data.created_at ? Date.parse(e.data.created_at) : now;
       const trialEnd = trialDays > 0 ? start + trialDays * DAY : 0;
       const trialing = trialEnd > now && !prev?.first_paid_at;
-      return { ...base, status: trialing ? 'trialing' : 'active', trial_ends_at: trialing ? iso(trialEnd) : prev?.trial_ends_at ?? null, current_period_end: next, past_due_since: null, workspacePlan: plan };
+      return { ...base, status: trialing ? 'trialing' : 'active', trial_ends_at: trialing ? iso(trialEnd) : prev?.trial_ends_at ?? null, current_period_end: next ?? undefined, past_due_since: null, workspacePlan: plan };
     }
     case 'subscription.renewed':
     case 'subscription.unpaused':
     case 'subscription.plan_changed':
-      return { ...base, status: 'active', current_period_end: next, past_due_since: null, first_paid_at: e.type === 'subscription.renewed' ? prev?.first_paid_at ?? iso(now) : prev?.first_paid_at ?? null, workspacePlan: plan };
+      // An event without a billing date keeps the one we have (undefined = unchanged).
+      return { ...base, status: 'active', current_period_end: next ?? undefined, past_due_since: null, first_paid_at: e.type === 'subscription.renewed' ? prev?.first_paid_at ?? iso(now) : prev?.first_paid_at ?? null, workspacePlan: plan };
     case 'payment.succeeded':
       if (!e.data.subscription_id) return null;
       return { ...base, status: 'active', current_period_end: next ?? undefined, past_due_since: null, first_paid_at: prev?.first_paid_at ?? iso(now), workspacePlan: plan };
