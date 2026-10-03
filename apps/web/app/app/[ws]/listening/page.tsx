@@ -1,3 +1,4 @@
+import { FREE_LEADS_PER_WEEK } from '@shipitloud/engine';
 import type { Metadata } from 'next';
 import { Tiles } from '@/components/app/bento';
 import Link from 'next/link';
@@ -100,6 +101,9 @@ export default async function Listening({ params, searchParams }: { params: Prom
     sb.from('mentions').select('id', { count: 'exact', head: true }).eq('workspace_id', id).eq('status', 'replied'),
   ]);
 
+  const free = ws.plan === 'free';
+  const lockedN = free ? Math.max(0, (bestCount ?? 0) - FREE_LEADS_PER_WEEK) : 0;
+
   // Smart search links: Reddit and Indie Hackers are read in the founder's own browser, never by us.
   const subs = ((redditPost?.content as { subreddits?: string[] } | null)?.subreddits ?? []);
   const links = smartLinks(cfg, subs, ws.plan);
@@ -153,7 +157,7 @@ export default async function Listening({ params, searchParams }: { params: Prom
           </div>
         ) : mentions?.length ? (
           <div className="pr-list">
-            {mentions.map((m) => {
+            {(free && f === 'best' ? mentions.slice(0, FREE_LEADS_PER_WEEK) : mentions).map((m) => {
               const src = SOURCE[m.source] ?? { name: m.source, icon: 'email' as const };
               const rough = m.relevance_score == null;
               const draftStatus = (m.assets as unknown as { status: string } | null)?.status;
@@ -193,6 +197,16 @@ export default async function Listening({ params, searchParams }: { params: Prom
                 </article>
               );
             })}
+            {free && f === 'best' && lockedN > 0 && (
+              <div className="pr-locked">
+                {Array.from({ length: Math.min(3, lockedN) }, (_, k) => <div key={k} className="pr-locked-row" aria-hidden="true"><span className="sk" style={{ width: 28, height: 28, borderRadius: 8 }} /><div><span className="sk sk-line" style={{ width: '35%' }} /><span className="sk sk-line" /><span className="sk sk-line" style={{ width: '70%' }} /></div></div>)}
+                <div className="pr-locked-cta">
+                  <b>{lockedN} more {lockedN === 1 ? 'person is' : 'people are'} asking for what you built</b>
+                  <span>Found and ranked. Unlock them with replies drafted in your voice.</span>
+                  <Link className="pr-btn pr-btn-primary" href={`/app/${id}/upgrade?reason=leads`}>Start Grow free for 7 days</Link>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="pr-list"><div className="pr-empty">

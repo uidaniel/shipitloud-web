@@ -74,7 +74,7 @@ export function Sidebar({ ws, pending, meter, email, notifications, mini: miniSt
     ] },
   ];
   const isOn = (href: string) => (href === base ? path === base : path === href || path.startsWith(`${href}/`));
-  const title = path === base ? 'Home' : path.endsWith('/brand') ? 'Brand' : path.endsWith('/activity') ? 'Activity' : path.endsWith('/settings') ? 'Settings' : path.endsWith('/brand') ? 'Brand' : path.endsWith('/kit') ? 'Launch kit' : path.endsWith('/plan') ? 'Launch plan' : path.endsWith('/waitlist') ? 'Waitlist' : path.endsWith('/listening') ? 'Listening' : path.endsWith('/content') ? 'Content' : path.includes('/blog') ? 'Blog' : path.endsWith('/analytics') ? 'Momentum' : path.endsWith('/customers') ? 'Customers' : path.endsWith('/ads') ? 'Ads' : path.endsWith('/growth') ? 'Growth plan' : 'Inbox';
+  const title = path === base ? 'Home' : path.endsWith('/brand') ? 'Brand' : path.endsWith('/activity') ? 'Activity' : path.endsWith('/settings') ? 'Settings' : path.includes('/billing') ? 'Billing' : path.endsWith('/upgrade') ? 'Upgrade' : path.endsWith('/brand') ? 'Brand' : path.endsWith('/kit') ? 'Launch kit' : path.endsWith('/plan') ? 'Launch plan' : path.endsWith('/waitlist') ? 'Waitlist' : path.endsWith('/listening') ? 'Listening' : path.endsWith('/content') ? 'Content' : path.includes('/blog') ? 'Blog' : path.endsWith('/analytics') ? 'Momentum' : path.endsWith('/customers') ? 'Customers' : path.endsWith('/ads') ? 'Ads' : path.endsWith('/growth') ? 'Growth plan' : 'Inbox';
 
   return (
     <div className={`pr-shell${mini ? ' is-mini' : ''}`}>
@@ -103,11 +103,13 @@ export function Sidebar({ ws, pending, meter, email, notifications, mini: miniSt
           })}
           <span className="pr-nav-k" />
           <Link href={`${base}/brand`} aria-current={isOn(`${base}/brand`) ? 'page' : undefined} title={mini ? 'Brand' : undefined}>{Icon.brand}<span className="l">Brand</span></Link>
+          <Link href={`${base}/billing`} aria-current={isOn(`${base}/billing`) ? 'page' : undefined} title={mini ? 'Billing' : undefined}>{Icon.card}<span className="l">Billing</span></Link>
           <Link href={`${base}/settings`} aria-current={path === `${base}/settings` ? 'page' : undefined} title={mini ? 'Settings' : undefined}>{Icon.settings}<span className="l">Settings</span></Link>
         </nav>
         <div className="pr-side-foot">
           <div className="pr-meter">
             <div className="pr-meter-h"><span>This month</span><b>{PLAN[ws.plan] ?? ws.plan}</b></div>
+            {ws.plan === 'free' && <Link className="pr-meter-up" href={`${base}/upgrade`}>Start Grow free</Link>}
             {meter.map((m) => {
               const pct = m.cap ? Math.min(100, (m.used / m.cap) * 100) : m.cap === 0 ? 100 : 0;
               return (

@@ -53,3 +53,11 @@ Everything below is already built in code. Each item is a dashboard setting, acc
 - [ ] Install attribution on iOS: add the founder's App Store Connect provider token (`pt`) so campaign links (`ct=<channel>`) show up in App Store Connect's App Analytics.
 - [ ] Google Play: there is no official public listing API. Today we read only the public listing page's basic metadata (name, description, icon, rating), no reviews. Before reading Play reviews, choose a licensed data provider (or confirm Google's terms allow it) and wire it into `apps/worker/src/appstore.ts`.
 - [ ] App analytics (P1): App Store Connect and Firebase connections so installs are attributed to channels instead of estimated.
+
+## Billing (Dodo Payments)
+- [ ] Until `DODO_API_KEY` is set, billing runs on a test-mode simulator in development: checkout is a pretend page and the Billing page has buttons to simulate a charge, a failed card and a renewal. In production it is off unless `BILLING_SIMULATOR=1` (never set that on the live site).
+- [ ] Dodo account (merchant of record, under MOTX Studios). Create three products: Grow ($49/month subscription with a 7-day trial and "Start the trial without a card" unchecked), Scale ($149/month), Launch Pass ($199 one-time).
+- [ ] Env: `DODO_API_KEY`, `DODO_WEBHOOK_SECRET` (whsec_…), `DODO_PRODUCT_GROW`, `DODO_PRODUCT_SCALE`, `DODO_PRODUCT_LAUNCH_PASS`, and `DODO_MODE=live` only when going live (test mode otherwise). The worker needs `DODO_API_KEY` and `DODO_MODE` too (dunning, pause resume).
+- [ ] Webhook endpoint in Dodo: `https://<app>/api/billing/webhook`, subscribed to all `subscription.*` and `payment.*` events.
+- [ ] Turn on Dodo's customer portal (card and invoices) and dunning retries over 7 days.
+- [ ] Before launch, in Dodo test mode: start a trial, let it convert, fail a card, pause, resume and cancel, and check each lands on the right plan.

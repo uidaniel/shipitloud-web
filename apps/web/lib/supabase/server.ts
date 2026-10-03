@@ -60,5 +60,8 @@ export interface Workspace {
   trust_dropped_at: string | null;
   trust_dropped_reason: string | null;
   launch_date: string | null;
+  free_wins_used: number;
+  referral_code: string | null;
+  suspended_at: string | null;
   created_at: string;
 }

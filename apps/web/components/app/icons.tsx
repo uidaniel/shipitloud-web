@@ -24,6 +24,7 @@ export const Icon = {
   doc: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M5 2.5h6.5L15 6v11.5H5zM11.5 2.5V6H15M7.5 10h5M7.5 13h5" /></svg>,
   shield: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M10 2.8 4.5 5v4.3c0 3.6 2.4 6.3 5.5 7.9 3.1-1.6 5.5-4.3 5.5-7.9V5z" /></svg>,
   sidebar: <svg width="18" height="18" viewBox="0 0 20 20"><rect {...p} x="2.5" y="3.5" width="15" height="13" rx="2.5" /><path {...p} d="M7.5 3.5v13" /></svg>,
+  card: <svg width="16" height="16" viewBox="0 0 20 20"><rect {...p} x="2.5" y="4.5" width="15" height="11" rx="2" /><path {...p} d="M2.5 8.5h15M5.5 12.5h3" /></svg>,
   arrow: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M4 10h12M11 5l5 5-5 5" /></svg>,
   chat: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M4 15.5 3 18l3.2-1.2A7.5 7.5 0 1 0 4 15.5z" /></svg>,
   heart: <svg width="16" height="16" viewBox="0 0 20 20"><path {...p} d="M10 16.5s-6-3.6-6-8.1A3.4 3.4 0 0 1 10 6.3a3.4 3.4 0 0 1 6 2.1c0 4.5-6 8.1-6 8.1z" /></svg>,

@@ -2,7 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { requireUser, requireWorkspace, supabaseAdmin } from '@/lib/supabase/server';
+import { FREE_LEADS_PER_WEEK, FREE_WINS } from '@shipitloud/engine';
+
+/** Free plan (PRD section 24): ongoing work goes through the paywall, with the reason shown there. */
+const paywall = (ws: string, reason: string): never => redirect(`/app/${ws}/upgrade?reason=${reason}`);
 
 export type FormState = { ok?: boolean; error?: string; values?: Record<string, string | string[]> };
 
@@ -44,8 +49,27 @@ export async function createWorkspace(_: unknown, form: FormData): Promise<FormS
   if (!fit) return fail(form, 'Pick the one that fits you. It decides what we do first.');
   if (!name) return fail(form, 'Give your product a name.');
   if (rawUrl && !url) return fail(form, 'That link doesn’t look right. Try something like yourproduct.com');
+  // One free setup per account and per product domain (PRD section 24): more products need a paid plan.
+  const admin = supabaseAdmin();
+  const { data: mine } = await admin.from('workspaces').select('id, plan').eq('owner_id', user.id);
+  if ((mine ?? []).length && (mine ?? []).every((w) => w.plan === 'free')) return fail(form, 'You already have a free workspace. Start Grow on it to add another product.');
+  const domain = url ? new URL(url).hostname.replace(/^www\./, '') : null;
+  // App store links share one domain per store, so they're told apart by the full link instead.
+  if (domain && !/^(apps\.apple\.com|play\.google\.com)$/.test(domain)) {
+    const { data: same } = await admin.from('workspaces').select('id, owner_id').or(`url.ilike.%://${domain}%,url.ilike.%://www.${domain}%`).neq('owner_id', user.id).limit(1);
+    if (same?.length) return fail(form, 'This product already has a ShipItLoud workspace. Ask its owner, or reply to our welcome email if it’s yours.');
+  }
   const { data, error } = await sb.from('workspaces').insert({ owner_id: user.id, product_name: name, url, fit }).select('id').single();
   if (error || !data) return fail(form, 'Couldn’t create your workspace. Try again.');
+  // A referral link brought them here: remember who, rewarded after their first payment.
+  const refCode = (await cookies()).get('sil_ref')?.value;
+  if (refCode) {
+    const { data: referrer } = await admin.from('workspaces').select('id, owner_id').eq('referral_code', refCode).maybeSingle();
+    if (referrer && referrer.owner_id !== user.id) {
+      await admin.from('workspaces').update({ referred_by: referrer.id }).eq('id', data.id);
+      await admin.from('referrals').insert({ referrer_workspace_id: referrer.id, referred_workspace_id: data.id });
+    }
+  }
   await Promise.all([
     sb.from('brand_brains').insert({ workspace_id: data.id, status: url ? 'building' : 'idle' }),
     sb.from('brand_kits').insert({ workspace_id: data.id }),
@@ -70,9 +94,10 @@ export async function decide(form: FormData) {
   const wsId = str(form.get('ws'));
   const assetId = str(form.get('asset'));
   const decision = str(form.get('decision'));
-  const { sb, user } = await requireWorkspace(wsId);
+  const { sb, user, ws } = await requireWorkspace(wsId);
   const { data: asset } = await sb.from('assets').select('id, status, content').eq('id', assetId).eq('workspace_id', wsId).maybeSingle();
   if (!asset || asset.status !== 'pending') return;
+  if (decision !== 'reject' && ws.plan === 'free' && (ws.free_wins_used ?? 0) >= FREE_WINS) paywall(wsId, 'wins');
 
   const now = new Date().toISOString();
   if (decision === 'reject') {
@@ -93,7 +118,8 @@ export async function decide(form: FormData) {
 
 export async function approveAll(form: FormData) {
   const wsId = str(form.get('ws'));
-  const { sb, user } = await requireWorkspace(wsId);
+  const { sb, user, ws } = await requireWorkspace(wsId);
+  if (ws.plan === 'free') paywall(wsId, 'week');
   const ids = str(form.get('ids'), 10000).split(',').filter(Boolean);
   for (const id of ids) {
     const { data } = await sb.from('assets').update({ status: 'approved', updated_at: new Date().toISOString() })
@@ -308,7 +334,8 @@ export async function makeLaunchKit(form: FormData) {
 
 export async function makeDemoVideo(form: FormData) {
   const wsId = str(form.get('ws'));
-  const { sb } = await requireWorkspace(wsId);
+  const { sb, ws } = await requireWorkspace(wsId);
+  if (ws.plan === 'free') paywall(wsId, 'video');
   await enqueue(sb, wsId, 'kit.video', {}, `video:${wsId}:${Date.now()}`);
   revalidatePath(`/app/${wsId}/kit`);
 }
@@ -446,9 +473,13 @@ export async function listenNow(form: FormData) {
 export async function draftMention(form: FormData) {
   const wsId = str(form.get('ws'));
   const id = str(form.get('mention'));
-  const { sb } = await requireWorkspace(wsId);
+  const { sb, ws } = await requireWorkspace(wsId);
   const { data } = await sb.from('mentions').select('id').eq('id', id).eq('workspace_id', wsId).maybeSingle();
   if (!data) return;
+  if (ws.plan === 'free') {
+    const { count } = await sb.from('assets').select('id', { count: 'exact', head: true }).eq('workspace_id', wsId).eq('type', 'reply').gte('created_at', new Date(Date.now() - 7 * 86_400_000).toISOString());
+    if ((count ?? 0) >= FREE_LEADS_PER_WEEK) paywall(wsId, 'leads');
+  }
   await enqueue(sb, wsId, 'listen.draft', { mention_id: id }, `draft:${id}`);
   revalidatePath(`/app/${wsId}/listening`);
 }
@@ -488,7 +519,8 @@ export async function revokeExtensionToken(form: FormData) {
 // ---------------------------------------------------------------- content engine
 export async function planWeek(form: FormData) {
   const wsId = str(form.get('ws'));
-  const { sb } = await requireWorkspace(wsId);
+  const { sb, ws } = await requireWorkspace(wsId);
+  if (ws.plan === 'free') paywall(wsId, 'week');
   await enqueue(sb, wsId, 'content.week', {}, `week:${wsId}:${Date.now()}`);
   revalidatePath(`/app/${wsId}/content`);
 }
@@ -529,7 +561,8 @@ export async function saveContentSources(_: unknown, form: FormData): Promise<Fo
 
 export async function setWeeklyPlan(form: FormData) {
   const wsId = str(form.get('ws'));
-  const { sb } = await requireWorkspace(wsId);
+  const { sb, ws } = await requireWorkspace(wsId);
+  if (ws.plan === 'free' && form.get('on') === 'true') paywall(wsId, 'week');
   await sb.from('content_sources').upsert({ workspace_id: wsId, weekly_plan: form.get('on') === 'true', updated_at: new Date().toISOString() }, { onConflict: 'workspace_id' });
   revalidatePath(`/app/${wsId}/content`);
 }
@@ -751,7 +784,8 @@ export async function draftBroadcastEmail(_: unknown, form: FormData): Promise<F
 /** Write this week's digest now (shown on Momentum, not sent). At most once every few minutes. */
 export async function makeDigestNow(form: FormData) {
   const wsId = str(form.get('ws'));
-  const { sb } = await requireWorkspace(wsId);
+  const { sb, ws } = await requireWorkspace(wsId);
+  if (ws.plan === 'free') paywall(wsId, 'digest');
   await enqueue(sb, wsId, 'digest.build', { kind: 'weekly' }, `digestnow:${wsId}:${Math.floor(Date.now() / 300_000)}`);
   revalidatePath(`/app/${wsId}/analytics`);
 }

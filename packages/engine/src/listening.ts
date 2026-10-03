@@ -1,3 +1,4 @@
+import { FREE_LEADS_PER_WEEK } from './billing.ts';
 // Listening rules and AI steps shared by the worker (polling) and the web app (Chrome extension API).
 // Pipeline: strict topic filter → free wording score → AI score the best few in one batch → draft replies.
 import {
@@ -116,6 +117,12 @@ export async function scoreNew(db: Db, workspaceId: string, b: BrandContext, opt
 /** Draft replies on our own for the strongest new conversations, within the daily cap. */
 export async function autoDraft(db: Db, workspaceId: string, b: BrandContext, threshold: number) {
   let left = autoDraftsPerDay() - (await callsToday(db, workspaceId, 'listen_reply'));
+  // Free plan: 3 warm leads a week get replies; the rest are found and counted but not drafted until unlocked.
+  const { data: w } = await db.from('workspaces').select('plan').eq('id', workspaceId).single();
+  if (w?.plan === 'free') {
+    const { count } = await db.from('assets').select('id', { count: 'exact', head: true }).eq('workspace_id', workspaceId).eq('type', 'reply').gte('created_at', new Date(Date.now() - 7 * 86_400_000).toISOString());
+    left = Math.min(left, FREE_LEADS_PER_WEEK - (count ?? 0));
+  }
   if (left <= 0) return 0;
   const { data: best } = await db.from('mentions').select('id').eq('workspace_id', workspaceId).eq('status', 'new').is('draft_asset_id', null)
     .gte('relevance_score', Math.max(threshold, 70)).order('relevance_score', { ascending: false }).limit(left);

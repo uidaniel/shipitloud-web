@@ -1,3 +1,4 @@
+import { runBillingOps } from './billing.ts';
 import { decideTrust, deliver, execute, UNDO_WINDOW_MINUTES, type AssetType } from '@shipitloud/core';
 import { actionsRepo, check, db, enqueue } from './db.ts';
 import { appUrl } from './env.ts';
@@ -6,7 +7,7 @@ import { makePosters } from './posters.ts';
 import { PlanLimitError, makeLaunchPlan, makeLaunchPosts } from './launch.ts';
 import { runReadiness } from './readiness.ts';
 import { makeDemoVideo } from './video.ts';
-import { NO_SHORTENER, draftReply, tagLinksInText, trackLinksInText } from '@shipitloud/engine';
+import { NO_SHORTENER, draftReply, tagLinksInText, trackLinksInText, FREE_WINS } from '@shipitloud/engine';
 import { pollWorkspace } from './listen.ts';
 import { findKeywords, writeArticle } from './blog.ts';
 import { findNicheFormats, makeCarousel, makeUgcVideo } from './ugc.ts';
@@ -321,6 +322,12 @@ export const handlers: Record<string, Handler> = {
   async 'asset.publish'(p) {
     const a = await loadAsset(p.asset_id);
     if (!['approved', 'auto_approved'].includes(a.status)) return; // undone or rejected meanwhile
+    // Free plan: 3 first wins. Beyond that the item stays approved and goes out once the founder upgrades.
+    const { data: win } = await db.rpc('use_free_win', { p_workspace: a.workspace_id, p_limit: FREE_WINS });
+    if (win === false) {
+      await notifyOwner(a.workspace_id, 'cap_reached', 'Your 3 free first wins are used', 'This one is approved and waiting. Start Grow free for 7 days and it goes out right away.', `${appUrl()}/app/${a.workspace_id}/upgrade?reason=wins`, `wins:${a.workspace_id}`);
+      return;
+    }
     // Licence gate (PRD section 22): anything built from footage needs a commercial licence for every clip.
     const ugcId = (a.content as { ugc_video_id?: string }).ugc_video_id;
     if (ugcId) {
@@ -375,18 +382,24 @@ export const handlers: Record<string, Handler> = {
   async notify(p, job) {
     if (!job.workspace_id) throw new Error('notify needs a workspace');
     const { owner_id } = await ownerOf(job.workspace_id);
-    const profile = check(await db.from('profiles').select('email, notification_prefs').eq('id', owner_id).single(), 'profile')!;
+    const profile = check(await db.from('profiles').select('email, notification_prefs, timezone').eq('id', owner_id).single(), 'profile')!;
     const n = { title: String(p.title), body: p.body ? String(p.body) : undefined, url: p.url ? String(p.url) : undefined };
-    const sent = await deliver({ to: { email: profile.email, prefs: profile.notification_prefs ?? {} }, ...n });
+    const sent = await deliver({ to: { email: profile.email, prefs: profile.notification_prefs ?? {}, timezone: profile.timezone ?? 'UTC' }, kind: String(p.kind ?? 'info'), ...n });
     check(await db.from('notifications').insert({ workspace_id: job.workspace_id, user_id: owner_id, kind: String(p.kind ?? 'info'), ...n, channels: sent }), 'store notification');
   },
 };
 
 let lastDigestCheck = 0;
+let lastBillingOps = 0;
 
 /** Housekeeping that runs every minute: expiry, reminders, platform-warning fallback. */
 export async function tick() {
   const now = new Date();
+  // Billing and retention housekeeping every 10 minutes (PRD sections 24 and 25).
+  if (now.getTime() - lastBillingOps > 10 * 60_000) {
+    lastBillingOps = now.getTime();
+    await runBillingOps(now.getTime()).catch((e) => console.error('[billing ops]', e instanceof Error ? e.message : e));
+  }
   // Listening: poll each active workspace every 20 minutes. The key makes this idempotent per slot.
   const slot = Math.floor(now.getTime() / (20 * 60_000));
   const due = check(await db.from('listen_configs').select('workspace_id, last_polled_at').eq('active', true), 'listen due') as { workspace_id: string; last_polled_at: string | null }[];
